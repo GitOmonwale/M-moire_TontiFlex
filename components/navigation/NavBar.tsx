@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GlassButton } from "./GlassButton";
+import { GlassButton } from "../GlassButton";
 import { Home, User, LogIn } from "lucide-react";
 
 export const NavBar = () => {
@@ -24,7 +24,7 @@ export const NavBar = () => {
               Tontines
             </Link>
             <Link href="/support" className="text-gray-700 hover:text-primary transition-colors">
-              Support
+              Contactez nous 
             </Link>
           </div>
 
@@ -51,3 +51,5 @@ export const NavBar = () => {
     </nav>
   );
 };
+
+export default NavBar;

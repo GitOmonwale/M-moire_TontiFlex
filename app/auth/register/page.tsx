@@ -46,15 +46,17 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-secondary via-white to-accent grid grid-cols-2">
-            <Image
+        <div className="grid grid-cols-2 h-full">
+          <div className="w-full h-full hidden md:block">
+              <Image
                 width={1200}
                 height={1000}
                 src="/images/img-6.jpeg"
                 alt="Login illustration"
                 className="w-full h-full object-cover"
             />
-            <div className="container mx-auto px-8 py-16">
+          </div>
+            <div className="container m-auto px-8 py-16">
                 <div className="max-w-2xl mx-auto">
                     <GlassCard>
                         <div className="text-center mb-8">
@@ -71,6 +73,7 @@ const Register = () => {
                                     <Input
                                         id="firstName"
                                         type="text"
+                                        name="firstName"
                                         placeholder="Votre prénom"
                                         value={formData.firstName}
                                         onChange={(e) => handleChange("firstName", e.target.value)}
@@ -87,6 +90,7 @@ const Register = () => {
                                     <Input
                                         id="lastName"
                                         type="text"
+                                        name="lastName"
                                         placeholder="Votre nom"
                                         value={formData.lastName}
                                         onChange={(e) => handleChange("lastName", e.target.value)}
@@ -104,6 +108,7 @@ const Register = () => {
                                 <Input
                                     id="phone"
                                     type="tel"
+                                    name="phone"
                                     placeholder="+229 XX XX XX XX"
                                     value={formData.phone}
                                     onChange={(e) => handleChange("phone", e.target.value)}
@@ -120,6 +125,7 @@ const Register = () => {
                                 <Input
                                     id="email"
                                     type="email"
+                                    name="email"
                                     placeholder="votre@email.com"
                                     value={formData.email}
                                     onChange={(e) => handleChange("email", e.target.value)}
@@ -136,6 +142,7 @@ const Register = () => {
                                 <Input
                                     id="address"
                                     type="text"
+                                    name="address"
                                     placeholder="Votre adresse complète"
                                     value={formData.address}
                                     onChange={(e) => handleChange("address", e.target.value)}
@@ -152,6 +159,7 @@ const Register = () => {
                                 <Input
                                     id="profession"
                                     type="text"
+                                    name="profession"
                                     placeholder="Votre profession"
                                     value={formData.profession}
                                     onChange={(e) => handleChange("profession", e.target.value)}
@@ -169,6 +177,7 @@ const Register = () => {
                                     <Input
                                         id="password"
                                         type="password"
+                                        name="password"
                                         placeholder="Votre mot de passe"
                                         value={formData.password}
                                         onChange={(e) => handleChange("password", e.target.value)}
@@ -185,6 +194,7 @@ const Register = () => {
                                     <Input
                                         id="confirmPassword"
                                         type="password"
+                                        name="confirmPassword"
                                         placeholder="Confirmer mot de passe"
                                         value={formData.confirmPassword}
                                         onChange={(e) => handleChange("confirmPassword", e.target.value)}
@@ -199,6 +209,7 @@ const Register = () => {
                                     <input
                                         type="checkbox"
                                         id="acceptTerms"
+                                        name="acceptTerms"
                                         checked={formData.acceptTerms}
                                         onChange={(e) => handleChange("acceptTerms", e.target.checked.toString())}
                                         className="w-4 h-4 rounded border-primary/20 text-primary focus:ring-primary"

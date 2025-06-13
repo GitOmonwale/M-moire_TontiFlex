@@ -9,36 +9,60 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Lock, ArrowRight } from "lucide-react";
-import router from "next/router";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
+    rememberMe: false
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Connexion réussie ! Bienvenue !");
-    setTimeout(() => router.push("/dashboard"), 1500);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setFormData({ ...formData, [e.target.name]: value });
+    setError(null);
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    /* try {
+       await login({
+         email: formData.email,
+         password: formData.password,
+         rememberMe: formData.rememberMe,
+       });
+       const redirectPath = getAndClearRedirect();
+ 
+       toast.success("Connexion réussie !");
+       setRedirecting(true);
+       router.push(redirectPath || "/dashbord/dashbord-user");
+     } catch (err) {
+       toast.error('Échec de la connexion');
+       setError('Email ou mot de passe incorrect');
+     } finally {
+       setLoading(false);
+     }*/
+       toast.success("Connexion réussie !");
+      setTimeout(() => router.push("/dashboard"), 1500);
   };
 
   return (
-    <div className="bg-gradient-to-br from-secondary via-white to-accent items-center grid grid-cols-2">
-    
-        <Image
-          width={1200}
-          height={1000}
-          src="/images/img-6.jpeg"
-          alt="Login illustration"
-          className="w-full h-full object-cover"
-        />
-
-      <div className="container mx-auto px-4 py-16">
+    <div className="h-full items-center grid grid-cols-2">
+      <Image
+        width={1200}
+        height={1000}
+        src="/images/img-6.jpeg"
+        alt="Login illustration"
+        className="w-full h-full object-cover"
+      />
+      <div className="container m-auto px-4 py-16">
         <div className="max-w-md mx-auto">
           <GlassCard>
             <div className="text-center mb-8">
@@ -55,9 +79,10 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
+                  name="email"
                   placeholder="votre@email.com ou +229 XX XX XX XX"
                   value={formData.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
+                  onChange={handleChange}
                   required
                   className="bg-white/50 border-primary/20"
                 />
@@ -70,47 +95,38 @@ const Login = () => {
                 </Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="Votre mot de passe"
                   value={formData.password}
-                  onChange={(e) => handleChange("password", e.target.value)}
+                  onChange={handleChange}
                   required
                   className="bg-white/50 border-primary/20"
                 />
               </div>
-
-              <div className="text-right">
-                <button
-                  type="button"
-                  className="text-primary hover:underline text-sm"
-                  onClick={() => toast.info("Fonctionnalité bientôt disponible")}
+              
+                <GlassButton
+                  type="submit"
+                  size="lg"
+                  className="w-full flex items-center justify-center"
                 >
-                  Mot de passe oublié ?
-                </button>
-              </div>
+                  Se connecter
+                  <ArrowRight className="ml-2" size={16} />
+                </GlassButton>
 
-              <GlassButton
-                type="submit"
-                size="lg"
-                className="w-full flex items-center justify-center"
-              >
-                Se connecter
-                <ArrowRight className="ml-2" size={16} />
-              </GlassButton>
-
-              <div className="text-center">
-                <p className="text-gray-600">
-                  Pas encore de compte ?{" "}
-                  <Link href={"/auth/login/register"}>
-                    <button
-                    type="button"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    S'inscrire gratuitement
-                  </button>
-                  </Link>
-                </p>
-              </div>
+                <div className="text-center">
+                  <p className="text-gray-600">
+                    Pas encore de compte ?{" "}
+                    <Link href={"/auth/register"}>
+                      <button
+                        type="button"
+                        className="text-primary hover:underline font-medium"
+                      >
+                        S'inscrire gratuitement
+                      </button>
+                    </Link>
+                  </p>
+                </div>
             </form>
           </GlassCard>
         </div>

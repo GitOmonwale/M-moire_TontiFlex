@@ -1,5 +1,4 @@
-
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
 interface GlassButtonProps {
@@ -21,7 +20,7 @@ export const GlassButton = ({
   disabled = false,
   type = "button",
 }: GlassButtonProps) => {
-  const baseClasses = "font-medium rounded-lg transition-all duration-300 border backdrop-blur-sm";
+  const baseClasses = "font-medium flex items-center justify-center rounded-lg transition-all duration-300 border backdrop-blur-sm";
   
   const variantClasses = {
     primary: "bg-primary text-white border-primary hover:bg-primary-dark shadow-lg hover:shadow-xl",

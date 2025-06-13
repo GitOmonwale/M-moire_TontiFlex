@@ -1,6 +1,7 @@
 'use client';
 import React from "react";
 import Link from "next/link";
+import { mockTontines } from "@/data/mockData";
 import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassButton } from "@/components/GlassButton";
@@ -10,49 +11,6 @@ import { Users, Calendar, Coins, Filter } from "lucide-react";
 const AvailableTontines = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedAmount, setSelectedAmount] = useState<string>("all");
-
-  const mockTontines = [
-    {
-      id: 1,
-      name: "Tontine des Femmes Entrepreneures",
-      type: "épargne",
-      minAmount: 500,
-      maxAmount: 5000,
-      frequency: "quotidien",
-      members: 25,
-      sfd: "SFD Porto-Novo"
-    },
-    {
-      id: 2,
-      name: "Groupe Solidaire Parakou",
-      type: "crédit",
-      minAmount: 1000,
-      maxAmount: 10000,
-      frequency: "hebdomadaire",
-      members: 15,
-      sfd: "SFD Parakou"
-    },
-    {
-      id: 3,
-      name: "Tontine Agricole Cotonou",
-      type: "épargne",
-      minAmount: 2000,
-      maxAmount: 15000,
-      frequency: "mensuel",
-      members: 30,
-      sfd: "SFD Cotonou"
-    },
-    {
-      id: 4,
-      name: "Cercle des Commerçantes",
-      type: "mixte",
-      minAmount: 1500,
-      maxAmount: 8000,
-      frequency: "hebdomadaire",
-      members: 20,
-      sfd: "SFD Bohicon"
-    }
-  ];
 
   const filteredTontines = mockTontines.filter(tontine => {
     const typeMatch = selectedType === "all" || tontine.type === selectedType;
@@ -65,8 +23,8 @@ const AvailableTontines = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary via-white to-accent">  
-      <div className="container mx-auto px-4 py-16">
+    <div>   
+      <div className="container mx-auto md:px-20 sm:px-10 px-5 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-primary mb-4">Tontines Disponibles</h1>
           <p className="text-xl text-gray-700">Choisissez la tontine qui correspond à vos besoins</p>
@@ -100,7 +58,7 @@ const AvailableTontines = () => {
                 <div className="space-y-2">
                   <label className="text-sm text-gray-600">Montant (FCFA)</label>
                   <Select value={selectedAmount} onValueChange={setSelectedAmount}>
-                    <SelectTrigger className="w-48 bg-white/50">
+                    <SelectTrigger className="w-48 bg-white/50 z-20">
                       <SelectValue placeholder="Tous les montants" />
                     </SelectTrigger>
                     <SelectContent>
