@@ -49,3 +49,25 @@ export interface FAQ {
   question: string;
   answer: string;
 } 
+
+
+export interface Tontine {
+  id: string;
+  name: string;
+  sfd: string;
+  type: string;
+  minAmount: number;
+  maxAmount: number;
+  frequency: string;
+  duration: string;
+  members: number;
+  currentMembers: number;
+  fraisAdhesion: number;
+  status: 'active' | 'en_cours' | 'terminee';
+  dateAdhesion: string;
+  miseJournaliere: number;
+  soldeActuel: number;
+  totalCotise: number;
+  prochaineCycle: string;
+  numeroCarnet: number;
+}

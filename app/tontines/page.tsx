@@ -113,7 +113,7 @@ const AvailableTontines = () => {
                 </div>
 
                 <div className="pt-4">
-                <Link href={`/tontines/${tontine.id}`}>
+                <Link href={`/my-tontines/${tontine.id}`}>
                   <GlassButton
                     className="w-full"
                   >

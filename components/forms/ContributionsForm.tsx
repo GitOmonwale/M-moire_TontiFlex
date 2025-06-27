@@ -6,25 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Coins, Smartphone } from "lucide-react";
-import router from "next/router";
 
 const ContributionForm = () => {
+    
   const [stakes, setStakes] = useState("1");
   const [operator, setOperator] = useState("");
-
   const stakeAmount = 2000;
   const totalAmount = parseInt(stakes) * stakeAmount;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success("Paiement effectué avec succès !");
-    setTimeout(() => router.push("/confirmation"), 1500);
   };
 
   return (
     <div className="">
       <div className="container mx-auto p-4">
-        <div className="max-w-md m-auto">
+        <div className="max-w-md mx-auto">
           <GlassCard>
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-primary mb-2">Contribution</h1>
@@ -51,7 +49,7 @@ const ContributionForm = () => {
                 <p className="text-gray-700">Total à payer: <span className="font-bold text-primary">{totalAmount.toLocaleString()} FCFA</span></p>
               </div>
 
-              <GlassButton type="submit" size="lg" className="w-full">
+              <GlassButton type="submit" size="lg" className="w-full cursor-pointer">
                 Payer {totalAmount.toLocaleString()} FCFA
               </GlassButton>
             </form>
