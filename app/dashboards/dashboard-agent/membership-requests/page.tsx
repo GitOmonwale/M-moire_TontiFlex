@@ -199,24 +199,6 @@ const AgentSFDAdhesionsPage = () => {
   return (
     <>
       <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Demandes d'adhésion</h1>
-              <p className="text-gray-600">Gérez les demandes d'adhésion aux tontines de votre SFD</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <GlassButton variant="outline" size="sm">
-              <Download size={16} className="mr-2" />
-              Exporter
-            </GlassButton>
-            <GlassButton size="sm">
-              <Plus size={16} className="mr-2" />
-              Nouvelle demande
-            </GlassButton>
-          </div>
-        </div>
 
         {/* Statistiques rapides */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -236,7 +218,7 @@ const AgentSFDAdhesionsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Validées</p>
-                <p className="text-2xl font-bold text-green-600">156</p>
+                <p className="text-2xl font-bold text-green-600">1</p>
               </div>
               <CheckCircle className="text-green-600" size={24} />
             </div>
@@ -500,7 +482,6 @@ const AgentSFDAdhesionsPage = () => {
           </div>
         )}
       </div>
-    </div>
     </>
   );
 };

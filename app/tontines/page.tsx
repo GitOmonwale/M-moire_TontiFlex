@@ -32,36 +32,21 @@ const AvailableTontines = () => {
 
         {/* Filters */}
         <div className="mb-8">
-          <GlassCard>
+          <GlassCard hover={false}>
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="flex items-center gap-2">
                 <Filter className="text-primary" size={20} />
-                <span className="text-primary font-medium">Filtres :</span>
+                <span className="text-primary font-medium">Filtre :</span>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-gray-600">Type de tontine</label>
-                  <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="w-48 bg-white/50">
-                      <SelectValue placeholder="Tous les types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les types</SelectItem>
-                      <SelectItem value="épargne">Épargne</SelectItem>
-                      <SelectItem value="crédit">Crédit</SelectItem>
-                      <SelectItem value="mixte">Mixte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="space-y-2">
                   <label className="text-sm text-gray-600">Montant (FCFA)</label>
                   <Select value={selectedAmount} onValueChange={setSelectedAmount}>
                     <SelectTrigger className="w-48 bg-white/50 z-20">
                       <SelectValue placeholder="Tous les montants" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       <SelectItem value="all">Tous les montants</SelectItem>
                       <SelectItem value="500-1000">500 - 1 000</SelectItem>
                       <SelectItem value="1000-5000">1 000 - 5 000</SelectItem>
@@ -113,7 +98,7 @@ const AvailableTontines = () => {
                 </div>
 
                 <div className="pt-4">
-                <Link href={`/my-tontines/${tontine.id}`}>
+                <Link href={`/dashboards/dashboard-client/my-tontines/${tontine.id}`}>
                   <GlassButton
                     className="w-full"
                   >

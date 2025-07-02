@@ -256,28 +256,11 @@ const AgentSFDHistoriquePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Historique des actions</h1>
-            <p className="text-gray-600">Consultez l'historique de toutes vos actions de validation</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <GlassButton variant="outline" size="sm">
-              <RefreshCw size={16} className="mr-2" />
-              Actualiser
-            </GlassButton>
-            <GlassButton variant="outline" size="sm">
-              <Download size={16} className="mr-2" />
-              Exporter
-            </GlassButton>
-          </div>
-        </div>
 
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <GlassCard className="p-4 border-l-4 border-l-blue-500">
             <div className="flex items-center justify-between">
               <div>
@@ -311,17 +294,6 @@ const AgentSFDHistoriquePage = () => {
                 </p>
               </div>
               <XCircle className="text-red-600" size={24} />
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-4 border-l-4 border-l-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Temps moyen</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.dureeMovenne}</p>
-                <p className="text-xs text-gray-500">minutes</p>
-              </div>
-              <Clock className="text-purple-600" size={24} />
             </div>
           </GlassCard>
         </div>

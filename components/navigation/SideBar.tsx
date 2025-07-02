@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { redirect, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
@@ -14,64 +14,30 @@ import {
   X,
   ChevronRight,
   LogOut,
-  Settings
 } from 'lucide-react';
-
-// Données de sidebar améliorées
-const sidebarItems = [
-  {
-    id: 1,
-    label: 'Tableau de bord',
-    icon: Home,
-    link: '/dashboard',
-    description: 'Vue d\'ensemble'
-  },
-  {
-    id: 2,
-    label: 'Mes Tontines',
-    icon: Users,
-    link: '/dashboard/my-tontines',
-    description: 'Gérer vos tontines'
-  },
-  {
-    id: 3,
-    label: 'Comptes Épargne',
-    icon: PiggyBank,
-    link: '/dashboard/savings',
-    description: 'Vos épargnes'
-  },
-   {
-    id: 3,
-    label: 'Prêts',
-    icon: PiggyBank,
-    link: '/dashboard/loans',
-    description: 'Vos prêts'
-  },
-  {
-    id: 5,
-    label: 'Notifications',
-    icon: Bell,
-    link: '/dashboard/client-notifications',
-    description: 'Messages et alertes',
-    badge: 3 // Nombre de notifications non lues
-  },
-  {
-    id: 6,
-    label: 'Mon Profil',
-    icon: User,
-    link: '/dashboard/profile',
-    description: 'Paramètres du compte'
-  }
-];
+import { sidebarItemsByRole } from '@/lib/sidebar-items';
+import { RoleKey } from '@/constants/roles';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface SideBarProps {
   isOpen?: boolean;
   onToggle?: () => void;
- onCollapseChange?: (collapsed: boolean) => void; 
+  onCollapseChange?: (collapsed: boolean) => void; 
+  role: RoleKey;
 }
 
 
-export const SideBar = ({ isOpen = true, onToggle, onCollapseChange }: SideBarProps) => {
+const SideBar: React.FC<SideBarProps> = ({
+  isOpen = true,
+  onToggle,
+  onCollapseChange,
+  role,
+}) => {
+  const router = useRouter();
+  const { logout } = useAuth();
+  const sidebarItems = sidebarItemsByRole[role] || [];
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
@@ -97,25 +63,32 @@ const toggleCollapse = () => {
     if (onCollapseChange) onCollapseChange(next); // <- on informe le parent
   }
 };
-
+const handleLogout = async () => {
+  try {
+    await logout();
+    router.push('/auth/login');
+  } catch (error) {
+    toast.error('Une erreur est survenue lors de la déconnexion');
+  }
+};
 
   return (
     <>
       {/* Overlay pour mobile */}
       {isMobile && isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 backdrop-blur-sm z-40 lg:hidden"
           onClick={onToggle}
         />
       )}
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 h-screen bg-sidebar-primary text-white transition-all duration-300 z-50",
+        "fixed left-0 top-0 h-screen bg-primary text-white transition-all duration-300 z-50",
         isMobile ? (
           isOpen ? "w-64" : "-translate-x-full"
         ) : (
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-full" : "w-64"
         )
       )}>
         {/* Header de la sidebar */}
@@ -233,7 +206,9 @@ const toggleCollapse = () => {
         <div className="p-4 border-t border-emerald-500/30 mb-6">
           <div className="space-y-2">
      
-            <button className="w-full flex items-center p-2 hover:bg-red-500/20 rounded-lg transition-colors group">
+            <button className="w-full flex items-center p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
+            onClick={handleLogout}
+            >
               <LogOut size={18} className="text-emerald-200 group-hover:text-red-300" />
               {(!isCollapsed || isMobile) && (
                 <span className="ml-3 text-sm text-emerald-200 group-hover:text-red-300">
@@ -247,4 +222,5 @@ const toggleCollapse = () => {
     </>
   );
 };
+
 export default SideBar;

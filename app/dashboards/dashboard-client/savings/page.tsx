@@ -223,7 +223,7 @@ const SavingsAccountsOverview = () => {
               <p className="text-gray-600">Gérez vos épargnes auprès de différents SFD</p>
             </div>
             <div className="">
-              <Link href="/dashboard/savings/new">
+              <Link href="/dashboards/dashboard-client/savings/new">
                 <GlassButton className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
                   <Plus size={16} className="mr-2" />
                   Nouveau compte
@@ -368,7 +368,7 @@ const SavingsAccountsOverview = () => {
                           </GlassButton>
                         </>
                       )}
-                      <Link href={`/dashboard/savings/${account.id}`}>
+                      <Link href={`/dashboards/dashboard-client/savings/${account.id}`}>
                         <GlassButton size="sm">
                           <Eye size={16} className="mr-2" />
                           Détails
@@ -388,7 +388,7 @@ const SavingsAccountsOverview = () => {
                     : `Aucun compte ne correspond au filtre "${filter}".`
                   }
                 </p>
-                <Link href="/dashboard/savings/new">
+                <Link href="/dashboards/dashboard-client/savings/new">
                   <GlassButton>
                     <Plus size={16} className="mr-2" />
                     Créer un compte épargne

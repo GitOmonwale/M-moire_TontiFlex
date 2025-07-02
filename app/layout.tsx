@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { archivo, chillax } from '@/lib/fonts'
 import './globals.css'
 import { LayoutWrapper } from '@/components/LayoutWrapper'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 
 export const metadata: Metadata = {
@@ -17,9 +18,11 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${archivo.variable} ${chillax.variable}`}>
       <body>
-        <LayoutWrapper>
-          {children}
-        </LayoutWrapper>
+        <AuthProvider>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </AuthProvider>
       </body>
     </html>
   )

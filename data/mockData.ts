@@ -69,7 +69,7 @@ export const mockTransactionHistory = [
     date: "2025-06-09T08:30:00Z",
     type: "Contribution",
     montant: 6000,
-    tontine: "Tontine des Entrepreneurs Dynamiques",
+    tontine: "Tontine ALAFIA", // ← Changé
     statut: "Confirmé",
     reference: "TXN002341",
   },
@@ -78,7 +78,7 @@ export const mockTransactionHistory = [
     date: "2025-06-08T14:15:00Z",
     type: "Retrait",
     montant: -10000,
-    tontine: "Groupe Solidarité Cotonou",
+    tontine: "Tontine ALAFIA", // ← Changé
     statut: "Confirmé",
     reference: "TXN002342",
   },

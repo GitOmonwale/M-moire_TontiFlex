@@ -23,7 +23,7 @@ export const sidebarItem: Sidebar[] = [
     id: 2,
     label: 'Mes Tontines',
     icon: DollarSign,
-    link: '/dashboard/my-tontines',
+    link: '/dashboards/dashboard-client/my-tontines',
   },
   {
     id: 3,

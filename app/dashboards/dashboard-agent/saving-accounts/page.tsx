@@ -4,7 +4,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   Search,
   PiggyBank,
   Eye,
@@ -59,7 +59,7 @@ const demandesCompteEpargne: DemandeCompteEpargne[] = [
     datedemande: "2025-06-20T09:15:00Z",
     documents: {
       pieceIdentiteRecto: "CNI_111_recto.jpg",
-      pieceIdentiteVerso: "CNI_111_verso.jpg", 
+      pieceIdentiteVerso: "CNI_111_verso.jpg",
       photoIdentite: "Photo_ID_111.jpg",
       type: "CNI"
     },
@@ -79,7 +79,7 @@ const demandesCompteEpargne: DemandeCompteEpargne[] = [
     documents: {
       pieceIdentiteRecto: "CNI_222_recto.jpg",
       pieceIdentiteVerso: "CNI_222_verso.jpg",
-      photoIdentite: "Photo_ID_222.jpg", 
+      photoIdentite: "Photo_ID_222.jpg",
       type: "CNI"
     },
     status: "en_attente",
@@ -102,7 +102,7 @@ const demandesCompteEpargne: DemandeCompteEpargne[] = [
       photoIdentite: "Photo_ID_333.jpg",
       type: "CNI"
     },
-    status: "en_attente", 
+    status: "en_attente",
     priorite: "normale",
     fraisCreation: 2500,
     compteUtilisateurExist: false,
@@ -122,7 +122,7 @@ const comptesActifs = [
   },
   {
     id: 2,
-    clientName: "Aminata DIALLO", 
+    clientName: "Aminata DIALLO",
     numeroCompte: "EPG001235",
     solde: 89000,
     dateOuverture: "2025-05-20",
@@ -137,7 +137,7 @@ const AgentSFDEpargnePage = () => {
   const [selectedDemande, setSelectedDemande] = useState<DemandeCompteEpargne | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<{url: string, title: string}>({url: "", title: ""});
+  const [selectedImage, setSelectedImage] = useState<{ url: string, title: string }>({ url: "", title: "" });
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState<'demandes' | 'actifs'>('demandes');
@@ -170,11 +170,11 @@ const AgentSFDEpargnePage = () => {
   // Filtrage des demandes
   const filteredDemandes = demandes.filter(demande => {
     const searchMatch = demande.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       demande.telephone.includes(searchTerm);
-    
+      demande.telephone.includes(searchTerm);
+
     const statusMatch = filterStatus === "all" || demande.status === filterStatus;
     const prioriteMatch = filterPriorite === "all" || demande.priorite === filterPriorite;
-    
+
     return searchMatch && statusMatch && prioriteMatch;
   });
 
@@ -198,7 +198,7 @@ const AgentSFDEpargnePage = () => {
   };
 
   const handleViewImage = (imageUrl: string, title: string) => {
-    setSelectedImage({url: imageUrl, title});
+    setSelectedImage({ url: imageUrl, title });
     setShowImageModal(true);
   };
 
@@ -220,7 +220,7 @@ const AgentSFDEpargnePage = () => {
     comptesActifs.push({
       id: comptesActifs.length + 1,
       clientName: newCompte.clientName,
-      numeroCompte: 'EPG00' + (Math.floor(Math.random()*9000)+1000),
+      numeroCompte: 'EPG00' + (Math.floor(Math.random() * 9000) + 1000),
       solde: 0,
       dateOuverture: format(new Date(), 'yyyy-MM-dd'),
       dernierDepot: format(new Date(), 'yyyy-MM-dd')
@@ -269,8 +269,8 @@ const AgentSFDEpargnePage = () => {
   };
 
   const getPrioriteIcon = (priorite: string) => {
-    return priorite === 'urgente' ? 
-      <AlertTriangle className="text-red-500" size={16} /> : 
+    return priorite === 'urgente' ?
+      <AlertTriangle className="text-red-500" size={16} /> :
       <Clock className="text-blue-500" size={16} />;
   };
 
@@ -278,66 +278,7 @@ const AgentSFDEpargnePage = () => {
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Comptes Épargne</h1>
-            <p className="text-gray-600">Gérez les demandes de création et les comptes actifs</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <GlassButton variant="outline" size="sm" onClick={() => toast.info("Exportation des données en cours...")}> 
-              <Download size={16} className="mr-2" />
-              Exporter
-            </GlassButton>
-            <GlassButton size="sm" onClick={handleNouveauCompte}>
-              <Plus size={16} className="mr-2" />
-              Nouveau compte
-            </GlassButton>
 
-            {/* Modal création compte */}
-            {showCreateModal && (
-              <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full overflow-auto">
-                  <div className="flex justify-between items-center p-6 border-b">
-                    <h3 className="text-xl font-semibold">Nouveau compte épargne</h3>
-                    <button
-                      onClick={() => setShowCreateModal(false)}
-                      className="p-2 hover:bg-gray-100 rounded-full"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom du client *</label>
-                      <input type="text" className="w-full p-2 border rounded" value={newCompte.clientName} onChange={e => setNewCompte(v => ({...v, clientName: e.target.value}))} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
-                      <input type="text" className="w-full p-2 border rounded" value={newCompte.telephone} onChange={e => setNewCompte(v => ({...v, telephone: e.target.value}))} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-                      <input type="text" className="w-full p-2 border rounded" value={newCompte.profession} onChange={e => setNewCompte(v => ({...v, profession: e.target.value}))} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                      <input type="text" className="w-full p-2 border rounded" value={newCompte.adresse} onChange={e => setNewCompte(v => ({...v, adresse: e.target.value}))} />
-                    </div>
-                    <div className="flex gap-3 justify-end mt-6">
-                      <GlassButton className="bg-green-600 hover:bg-green-700" onClick={handleCreateCompte}>
-                        <Check size={16} className="mr-2" />
-                        Créer
-                      </GlassButton>
-                      <GlassButton variant="outline" onClick={() => setShowCreateModal(false)}>
-                        Annuler
-                      </GlassButton>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -414,8 +355,8 @@ const AgentSFDEpargnePage = () => {
         {/* Contenu selon l'onglet actif */}
         {activeTab === 'demandes' && (
           <>
-            {/* Filtres et recherche */}
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                 {/* Recherche */}
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -442,166 +383,219 @@ const AgentSFDEpargnePage = () => {
                   </Select>
                 </div>
               </div>
+              <div className="flex items-center gap-3">
+                <GlassButton size="sm" onClick={handleNouveauCompte}>
+                  <Plus size={16} className="mr-2" />
+                  Nouveau compte
+                </GlassButton>
+
+                {/* Modal création compte */}
+                {showCreateModal && (
+                  <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg max-w-md w-full overflow-auto">
+                      <div className="flex justify-between items-center p-6 border-b">
+                        <h3 className="text-xl font-semibold">Nouveau compte épargne</h3>
+                        <button
+                          onClick={() => setShowCreateModal(false)}
+                          className="p-2 hover:bg-gray-100 rounded-full"
+                        >
+                          <X size={20} />
+                        </button>
+                      </div>
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Nom du client *</label>
+                          <input type="text" className="w-full p-2 border rounded" value={newCompte.clientName} onChange={e => setNewCompte(v => ({ ...v, clientName: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+                          <input type="text" className="w-full p-2 border rounded" value={newCompte.telephone} onChange={e => setNewCompte(v => ({ ...v, telephone: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                          <input type="text" className="w-full p-2 border rounded" value={newCompte.profession} onChange={e => setNewCompte(v => ({ ...v, profession: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                          <input type="text" className="w-full p-2 border rounded" value={newCompte.adresse} onChange={e => setNewCompte(v => ({ ...v, adresse: e.target.value }))} />
+                        </div>
+                        <div className="flex gap-3 justify-end mt-6">
+                          <GlassButton className="bg-green-600 hover:bg-green-700" onClick={handleCreateCompte}>
+                            <Check size={16} className="mr-2" />
+                            Créer
+                          </GlassButton>
+                          <GlassButton variant="outline" onClick={() => setShowCreateModal(false)}>
+                            Annuler
+                          </GlassButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Filtres et recherche */}
+
             <div className="overflow-x-auto mb-8 w-full">
-          <table className="min-w-[900px] w-full text-sm border-separate border-spacing-y-2">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-2 py-2 text-left">Client</th>
-                <th className="px-2 py-2 text-left">Téléphone</th>
-                <th className="px-2 py-2 text-left">Date</th>
-                <th className="px-2 py-2 text-left">Compte utilisateur</th>
-                <th className="px-2 py-2 text-center">Statut</th>
-                <th className="px-2 py-2 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDemandes.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center text-gray-400 py-6">
-                    <UserCheck className="mx-auto mb-2 text-gray-300" size={36} />
-                    <div>Aucune demande trouvée</div>
-                    <div className="text-xs text-gray-500">Essayez de modifier vos filtres de recherche</div>
-                  </td>
-                </tr>
-              ) : (
-                filteredDemandes.map((demande) => (
-                  <tr key={demande.id}
-                    className={
-                      "bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md"
-                    }
-                  >
-                    {/* Client */}
-                    <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
-                      {demande.clientName}
-                    </td>
-                    {/* Téléphone */}
-                    <td className="px-2 py-2 text-gray-700 align-middle">
-                      {demande.telephone}
-                    </td>
-                    {/* Date */}
-                    <td className="px-2 py-2 text-gray-700 align-middle">
-                      {format(new Date(demande.datedemande), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                    </td>
-                    <td className="px-2 py-2 text-gray-700 align-middle">
+              <table className="min-w-[900px] w-full text-sm border-separate border-spacing-y-2">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-2 py-2 text-left">Client</th>
+                    <th className="px-2 py-2 text-left">Téléphone</th>
+                    <th className="px-2 py-2 text-left">Date</th>
+                    <th className="px-2 py-2 text-left">Compte utilisateur</th>
+                    <th className="px-2 py-2 text-center">Statut</th>
+                    <th className="px-2 py-2 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDemandes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center text-gray-400 py-6">
+                        <UserCheck className="mx-auto mb-2 text-gray-300" size={36} />
+                        <div>Aucune demande trouvée</div>
+                        <div className="text-xs text-gray-500">Essayez de modifier vos filtres de recherche</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDemandes.map((demande) => (
+                      <tr key={demande.id}
+                        className={
+                          "bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md"
+                        }
+                      >
+                        {/* Client */}
+                        <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
+                          {demande.clientName}
+                        </td>
+                        {/* Téléphone */}
+                        <td className="px-2 py-2 text-gray-700 align-middle">
+                          {demande.telephone}
+                        </td>
+                        {/* Date */}
+                        <td className="px-2 py-2 text-gray-700 align-middle">
+                          {format(new Date(demande.datedemande), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                        </td>
+                        <td className="px-2 py-2 text-gray-700 align-middle">
                           <span className={cn("ml-2 px-2 py-1 rounded-full text-xs font-medium",
-                            demande.compteUtilisateurExist 
+                            demande.compteUtilisateurExist
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
                           )}>
                             {demande.compteUtilisateurExist ? 'Existant' : 'À créer'}
                           </span>
                         </td>
-                    {/* Statut */}
-                    <td className="px-2 py-2 text-center align-middle">
-                      <span className={cn("px-3 text-nowrap py-1 rounded-full text-xs font-medium border", getStatusBadge(demande.status))}>
-                        {demande.status === 'en_attente' ? 'En attente' : demande.status === 'valide' ? 'Validée' : 'Rejetée'}
-                      </span>
+                        {/* Statut */}
+                        <td className="px-2 py-2 text-center align-middle">
+                          <span className={cn("px-3 text-nowrap py-1 rounded-full text-xs font-medium border", getStatusBadge(demande.status))}>
+                            {demande.status === 'en_attente' ? 'En attente' : demande.status === 'valide' ? 'Validée' : 'Rejetée'}
+                          </span>
+                        </td>
+                        {/* Actions */}
+                        <td className="px-2 py-2 text-center align-middle">
+                          <div className="flex items-center gap-3">
+                            <GlassButton
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewDetails(demande)}
+                            >
+                              <Eye size={16} className="mr-1" />
+                            </GlassButton>
+
+                            {demande.status === 'en_attente' && (
+                              <>
+                                <GlassButton
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => handleValidateCompte(demande)}
+                                >
+                                  <CheckCircle size={16} className="mr-1" />
+                                </GlassButton>
+
+                                <GlassButton
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                  onClick={() => handleRejectClick(demande)}
+                                >
+                                  <Ban size={16} className="mr-1" />
+                                </GlassButton>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* Onglet comptes actifs */}
+        {activeTab === 'actifs' && (
+          <table className="min-w-[900px] w-full text-sm border-separate border-spacing-y-2">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-2 py-2 text-left">Client</th>
+                <th className="px-2 py-2 text-left">N° Compte</th>
+                <th className="px-2 py-2 text-left">Solde</th>
+                <th className="px-2 py-2 text-left">Date ouverture</th>
+                <th className="px-2 py-2 text-left">Dernier dépôt</th>
+                <th className="px-2 py-2 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comptesActifs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-gray-400 py-6">
+                    <PiggyBank className="mx-auto mb-2 text-gray-300" size={36} />
+                    <div>Aucun compte épargne actif</div>
+                  </td>
+                </tr>
+              ) : (
+                comptesActifs.map((compte) => (
+                  <tr key={compte.id}
+                    className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md"
+                  >
+                    {/* Client */}
+                    <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
+                      {compte.clientName}
+                    </td>
+                    {/* N° Compte */}
+                    <td className="px-2 py-2 text-gray-700 align-middle">
+                      {compte.numeroCompte}
+                    </td>
+                    {/* Solde */}
+                    <td className="px-2 py-2 text-green-700 align-middle font-bold">
+                      {compte.solde.toLocaleString()} FCFA
+                    </td>
+                    {/* Date ouverture */}
+                    <td className="px-2 py-2 text-gray-700 align-middle">
+                      {format(new Date(compte.dateOuverture), 'dd/MM/yyyy', { locale: fr })}
+                    </td>
+                    {/* Dernier dépôt */}
+                    <td className="px-2 py-2 text-gray-700 align-middle">
+                      {format(new Date(compte.dernierDepot), 'dd/MM/yyyy', { locale: fr })}
                     </td>
                     {/* Actions */}
                     <td className="px-2 py-2 text-center align-middle">
-                    <div className="flex items-center gap-3">
-                      <GlassButton 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleViewDetails(demande)}
-                      >
-                        <Eye size={16} className="mr-1" />
-                      </GlassButton>
-
-                      {demande.status === 'en_attente' && (
-                        <>
-                          <GlassButton 
-                            size="sm" 
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleValidateCompte(demande)}
-                          >
-                            <CheckCircle size={16} className="mr-1" />
-                          </GlassButton>
-                          
-                          <GlassButton 
-                            size="sm" 
-                            variant="outline"
-                            className="border-red-300 text-red-600 hover:bg-red-50"
-                            onClick={() => handleRejectClick(demande)}
-                          >
-                            <Ban size={16} className="mr-1" />
-                          </GlassButton>
-                        </>
-                      )}
-                    </div>
+                      <div className="flex items-center gap-3 justify-center">
+                        <GlassButton size="sm" variant="outline" onClick={() => { setSelectedCompte(compte); setShowHistoriqueModal(true); }}>
+                          <Eye size={16} className="mr-1" />
+                        </GlassButton>
+                        <GlassButton size="sm" variant="outline" onClick={() => handleTelechargerReleve(compte)}>
+                          <Download size={16} className="mr-1" />
+                        </GlassButton>
+                      </div>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-        </div>
-        </>
         )}
-
-        {/* Onglet comptes actifs */}
-        {activeTab === 'actifs' && (
-    <table className="min-w-[900px] w-full text-sm border-separate border-spacing-y-2">
-      <thead>
-        <tr className="bg-gray-50">
-          <th className="px-2 py-2 text-left">Client</th>
-          <th className="px-2 py-2 text-left">N° Compte</th>
-          <th className="px-2 py-2 text-left">Solde</th>
-          <th className="px-2 py-2 text-left">Date ouverture</th>
-          <th className="px-2 py-2 text-left">Dernier dépôt</th>
-          <th className="px-2 py-2 text-center">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {comptesActifs.length === 0 ? (
-          <tr>
-            <td colSpan={6} className="text-center text-gray-400 py-6">
-              <PiggyBank className="mx-auto mb-2 text-gray-300" size={36} />
-              <div>Aucun compte épargne actif</div>
-            </td>
-          </tr>
-        ) : (
-          comptesActifs.map((compte) => (
-            <tr key={compte.id}
-              className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md"
-            >
-              {/* Client */}
-              <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
-                {compte.clientName}
-              </td>
-              {/* N° Compte */}
-              <td className="px-2 py-2 text-gray-700 align-middle">
-                {compte.numeroCompte}
-              </td>
-              {/* Solde */}
-              <td className="px-2 py-2 text-green-700 align-middle font-bold">
-                {compte.solde.toLocaleString()} FCFA
-              </td>
-              {/* Date ouverture */}
-              <td className="px-2 py-2 text-gray-700 align-middle">
-                {format(new Date(compte.dateOuverture), 'dd/MM/yyyy', { locale: fr })}
-              </td>
-              {/* Dernier dépôt */}
-              <td className="px-2 py-2 text-gray-700 align-middle">
-                {format(new Date(compte.dernierDepot), 'dd/MM/yyyy', { locale: fr })}
-              </td>
-              {/* Actions */}
-              <td className="px-2 py-2 text-center align-middle">
-                <div className="flex items-center gap-3 justify-center">
-                  <GlassButton size="sm" variant="outline" onClick={() => { setSelectedCompte(compte); setShowHistoriqueModal(true); }}>
-                    <Eye size={16} className="mr-1" />
-                  </GlassButton>
-                  <GlassButton size="sm" variant="outline" onClick={() => handleTelechargerReleve(compte)}>
-                    <Download size={16} className="mr-1" />
-                  </GlassButton>
-                </div>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-)}
 
         {/* Modal détails */}
         {showModal && selectedDemande && (
@@ -616,7 +610,7 @@ const AgentSFDEpargnePage = () => {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
@@ -699,7 +693,7 @@ const AgentSFDEpargnePage = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  <GlassButton 
+                  <GlassButton
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => {
                       handleValidateCompte(selectedDemande);
@@ -709,8 +703,8 @@ const AgentSFDEpargnePage = () => {
                     <Check size={16} className="mr-2" />
                     Valider le compte
                   </GlassButton>
-                  
-                  <GlassButton 
+
+                  <GlassButton
                     variant="outline"
                     className="border-red-300 text-red-600 hover:bg-red-50"
                     onClick={() => {
@@ -767,15 +761,15 @@ const AgentSFDEpargnePage = () => {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <p className="text-gray-700 mb-4">
                   Vous êtes sur le point de rejeter la demande de compte épargne de <strong>{selectedDemande.clientName}</strong>.
                 </p>
-                
+
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Raison du rejet</label>
-                  <select 
+                  <select
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded-lg"
@@ -790,15 +784,15 @@ const AgentSFDEpargnePage = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  <GlassButton 
+                  <GlassButton
                     className="bg-red-600 hover:bg-red-700"
                     onClick={() => handleRejectCompte(selectedDemande, rejectReason)}
                     disabled={!rejectReason}
                   >
                     Confirmer le rejet
                   </GlassButton>
-                  
-                  <GlassButton 
+
+                  <GlassButton
                     variant="outline"
                     onClick={() => setShowRejectModal(false)}
                   >

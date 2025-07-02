@@ -190,26 +190,8 @@ const AgentSFDRetraitsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Demandes de retrait</h1>
-            <p className="text-gray-600">Gérez les demandes de retrait de votre SFD</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <GlassButton variant="outline" size="sm">
-              <RefreshCw size={16} className="mr-2" />
-              Actualiser fonds
-            </GlassButton>
-            <GlassButton variant="outline" size="sm">
-              <Download size={16} className="mr-2" />
-              Exporter
-            </GlassButton>
-          </div>
-        </div>
-
         {/* Statistiques et fonds disponibles */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <GlassCard className="p-4 border-l-4 border-l-orange-500">

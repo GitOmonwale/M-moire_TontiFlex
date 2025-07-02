@@ -88,7 +88,7 @@
 body {
   background: rgb(var(--background));
   color: rgb(var(--foreground));
-  /* Remplacez Arial par votre police préférée */
+  min-height: 100vh;
   font-family: var(--font-archivo), Arial, Helvetica, sans-serif;
 }
 

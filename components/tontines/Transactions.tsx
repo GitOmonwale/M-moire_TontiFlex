@@ -95,7 +95,7 @@ const Transactions= () => {
                 </div>
 
                 <div className="mt-6 text-center">
-                    <Link href="/dashboard/historique">
+                    <Link href="/dashboards/dashboard-client/historique">
                         <GlassButton variant="outline">
                             Voir tout l'historique
                         </GlassButton>

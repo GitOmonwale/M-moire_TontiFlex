@@ -202,7 +202,7 @@ const MyLoans = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -397,7 +397,7 @@ const MyLoans = () => {
                     </span>
                   ) : (
                     <span className="flex items-center gap-2 text-sm font-medium text-orange-700 bg-orange-100 px-3 py-2 rounded-lg border border-orange-200">
-                      <Warning size={16} />
+                      {/* <Warning size={16} /> */}
                       Prêt actif en cours
                     </span>
                   )}
