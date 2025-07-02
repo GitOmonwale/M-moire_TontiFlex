@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import Link from 'next/link';
 // Interface pour les demandes de comptes épargne
 interface DemandeCompteEpargne {
   id: number;
@@ -384,10 +385,12 @@ const AgentSFDEpargnePage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <GlassButton size="sm" onClick={handleNouveauCompte}>
-                  <Plus size={16} className="mr-2" />
-                  Nouveau compte
-                </GlassButton>
+                <Link href="/dashboards/dashboard-agent/saving-accounts/new">
+                  <GlassButton size="sm">
+                    <Plus size={16} className="mr-2" />
+                    Nouveau compte
+                  </GlassButton>
+                </Link>
 
                 {/* Modal création compte */}
                 {showCreateModal && (

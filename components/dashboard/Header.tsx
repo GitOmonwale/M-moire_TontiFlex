@@ -32,11 +32,11 @@ export const Header = ({ onMenuToggle}: HeaderProps) => {
         return "Voici un aperçu de vos finances personnelles";
       case "AGENT_SFD":
         return "Suivez les dossiers de vos clients ici";
-      case "SUPERVISOR":
+      case "SUPERVISEUR_SFD":
         return "Supervisez les opérations de votre équipe";
       case "ADMIN_SFD":
         return "Gérez les activités de votre institution SFD";
-      case "ADMINPLAT":
+      case "ADMIN_PLATEFORME":
         return "Contrôlez la plateforme à l'échelle globale";
       default:
         return "Bienvenue sur votre tableau de bord";
@@ -48,11 +48,11 @@ export const Header = ({ onMenuToggle}: HeaderProps) => {
         return "Client";
       case "AGENT_SFD":
         return "Agent de Terrain";
-      case "SUPERVISOR":
+      case "SUPERVISEUR_SFD":
         return "Superviseur SFD";
       case "ADMIN_SFD":
         return "Administrateur SFD";
-      case "ADMINPLAT":
+      case "ADMIN_PLATEFORME":
         return "Administrateur Plateforme";
       default:
         return "";

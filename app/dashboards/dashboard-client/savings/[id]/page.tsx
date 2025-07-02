@@ -41,6 +41,7 @@ import {
 import { format, startOfMonth, endOfMonth, subMonths, differenceInMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 // Types (réutilisés de la page overview)
 interface SavingsAccount {
@@ -184,8 +185,11 @@ const mockTransactionHistory: Transaction[] = [
 ];
 
 const SavingsAccountDetails = () => {
-  const params = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  
+  // For debugging - will show in browser console
+  console.log('Current savings account ID:', id);
   const [account, setAccount] = useState<SavingsAccount>(mockSavingsAccount);
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactionHistory);
   const [filter, setFilter] = useState<'tous' | 'depot' | 'retrait'>('tous');
@@ -235,7 +239,7 @@ const SavingsAccountDetails = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header Navigation */}
         <div className="flex items-center gap-4 mb-8">
@@ -400,7 +404,7 @@ const SavingsAccountDetails = () => {
           
           {/* Contenu principal - Historique des transactions */}
           <div className="lg:col-span-8">
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               
               {/* Header avec filtres */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -426,10 +430,6 @@ const SavingsAccountDetails = () => {
                     <option value="depot">Dépôts</option>
                     <option value="retrait">Retraits</option>
                   </select>
-                  <GlassButton variant="outline" size="sm">
-                    <Download size={16} className="mr-2" />
-                    Exporter
-                  </GlassButton>
                 </div>
               </div>
 
@@ -532,7 +532,7 @@ const SavingsAccountDetails = () => {
           <div className="lg:col-span-4 space-y-6">
 
             {/* Informations SFD */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                   <Building className="text-white" size={20} />
@@ -568,7 +568,7 @@ const SavingsAccountDetails = () => {
             </GlassCard>
 
             {/* Éligibilité crédit */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <div className="flex items-center gap-3 mb-4">
                 <div className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center",
@@ -597,10 +597,12 @@ const SavingsAccountDetails = () => {
                       Ancienneté du compte: {monthsActive} mois
                     </p>
                   </div>
+                  <Link href={`/dashboards/dashboard-client/loans/new/${id}`}>
                   <GlassButton className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white">
                     <CreditCard size={16} className="mr-2" />
                     Demander un prêt
                   </GlassButton>
+                  </Link>
                 </div>
               ) : (
                 <div>

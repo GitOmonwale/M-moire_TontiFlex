@@ -134,7 +134,7 @@ const ModernDashboard = () => {
           {/* Sidebar droite avec informations utiles */}
           <div className="space-y-6">
             {/* Actions rapides améliorées */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
             <div className="space-y-3">
                   <GlassButton variant="outline" className="w-full h-12 text-left justify-start border-2">
@@ -148,7 +148,7 @@ const ModernDashboard = () => {
             </GlassCard>
 
             {/* Rappels et alertes */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Bell className="mr-2 text-orange-600" size={20} />
                 Rappels
@@ -181,7 +181,7 @@ const ModernDashboard = () => {
             </GlassCard>
           </div>
         </div>
-        <div className='mt-8'>
+        <div className='mt-8' >
           <Transactions />
         </div>
       </div>

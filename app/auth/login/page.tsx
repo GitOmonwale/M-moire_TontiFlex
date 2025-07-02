@@ -54,7 +54,7 @@ const Login = () => {
   };
 
   return (
-    <div className="h-full items-center grid grid-cols-2">
+    <div className="h-screen items-center grid grid-cols-2">
       <Image
         width={1200}
         height={1000}

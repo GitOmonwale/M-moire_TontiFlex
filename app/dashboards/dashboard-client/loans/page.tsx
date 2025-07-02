@@ -5,10 +5,10 @@ import { GlassButton } from "@/components/GlassButton";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { 
-  CreditCard, 
-  Plus, 
-  Eye, 
+import {
+  CreditCard,
+  Plus,
+  Eye,
   Calendar,
   Search,
   Filter,
@@ -28,10 +28,13 @@ import {
   FileText,
   Users,
   BadgeCheck,
+  Flag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import router from "next/router";
+import Link from "next/link";
 
 const MyLoans = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -130,33 +133,33 @@ const MyLoans = () => {
   // Filtrage des prêts
   const getFilteredLoans = () => {
     let filteredBySfd = selectedSfd === "all" ? loansBySfd : { [selectedSfd]: loansBySfd[selectedSfd] || [] };
-    
+
     const result: typeof loansBySfd = {};
-    
+
     Object.entries(filteredBySfd).forEach(([sfd, loans]) => {
       const filteredLoans = loans.filter(loan => {
         const matchesSearch = loan.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             loan.id.includes(searchTerm);
+          loan.id.includes(searchTerm);
         const matchesFilter = filterStatus === "all" || loan.status.toLowerCase() === filterStatus.toLowerCase();
         return matchesSearch && matchesFilter;
       });
-      
+
       if (filteredLoans.length > 0) {
         result[sfd] = filteredLoans;
       }
     });
-    
+
     return result;
   };
 
   const filteredLoansBySfd = getFilteredLoans();
 
   const handleNewLoan = () => {
-    navigate("/loan");
+    router.push(`/dashboards/dashboard-client/loans/new/${tontineId}`);
   };
 
   const handleViewLoan = (loanId: string) => {
-    navigate(`/loan/${loanId}`);
+    router.push(`/dashboards/dashboard-client/loans/${loanId}`);
   };
 
   const formatCurrency = (amount: number) => {
@@ -211,29 +214,27 @@ const MyLoans = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Prêts</h1>
               <p className="text-gray-600">Gérez et consultez vos demandes de crédit par SFD</p>
             </div>
-            
+
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
-              <GlassButton variant="outline">
-                <Download size={16} className="mr-2" />
-                Exporter
-              </GlassButton>
-              
-              <GlassButton 
-                onClick={handleNewLoan}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-              >
-                <Plus size={16} className="mr-2" />
-                Nouvelle demande
-              </GlassButton>
+              <Link href="/dashboards/dashboard-client/loans">
+                <GlassButton
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Nouvelle demande
+                </GlassButton>
+              </Link>
             </div>
           </div>
 
           {/* Avertissement discret */}
           <div className="bg-orange-50/80 backdrop-blur-sm border border-orange-200/50 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
-              Red flag
               <div>
-                <p className="text-sm font-medium text-orange-800 mb-1">Règle importante</p>
+                <p className="text-sm font-medium text-orange-800 mb-1 flex items-center gap-2">
+                  <Flag size={16} />
+                  <span>Règle importante</span>
+                </p>
                 <p className="text-sm text-orange-700">
                   Une SFD n'accorde qu'un seul prêt actif à la fois. Vous devez rembourser intégralement votre prêt en cours avant d'en demander un nouveau.
                 </p>
@@ -241,79 +242,8 @@ const MyLoans = () => {
             </div>
           </div>
 
-          {/* Statistiques globales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <GlassCard className="p-6 border-l-4 border-l-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total emprunté</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalLoaned)}</p>
-                  <p className="text-xs text-gray-500">{allLoans.length} prêt(s)</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <CreditCard className="text-blue-600" size={24} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm text-blue-600">
-                <TrendingUp size={16} className="mr-1" />
-                {activeLoans} actif(s)
-              </div>
-            </GlassCard>
-
-            <GlassCard className="p-6 border-l-4 border-l-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total remboursé</p>
-                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
-                  <p className="text-xs text-gray-500">{completedLoans} terminé(s)</p>
-                </div>
-                <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <BadgeCheck className="text-green-600" size={24} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm text-green-600">
-                <CheckCircle size={16} className="mr-1" />
-                {((totalPaid / totalLoaned) * 100).toFixed(0)}% progression
-              </div>
-            </GlassCard>
-
-            <GlassCard className="p-6 border-l-4 border-l-orange-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Reste à payer</p>
-                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalRemaining)}</p>
-                  <p className="text-xs text-gray-500">En cours</p>
-                </div>
-                <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Timer className="text-orange-600" size={24} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm text-orange-600">
-                <Clock size={16} className="mr-1" />
-                {((totalRemaining / totalLoaned) * 100).toFixed(0)}% restant
-              </div>
-            </GlassCard>
-
-            <GlassCard className="p-6 border-l-4 border-l-purple-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Taux moyen</p>
-                  <p className="text-2xl font-bold text-purple-600">{averageRate.toFixed(1)}%</p>
-                  <p className="text-xs text-gray-500">Par an</p>
-                </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Percent className="text-purple-600" size={24} />
-                </div>
-              </div>
-              <div className="mt-4 flex items-center text-sm text-purple-600">
-                <Target size={16} className="mr-1" />
-                Tous SFD
-              </div>
-            </GlassCard>
-          </div>
-
           {/* Filtres et recherche */}
-          <GlassCard className="p-6 mb-6">
+          <div className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="search" className="text-gray-700 font-medium mb-2 block">
@@ -332,7 +262,7 @@ const MyLoans = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="sfd-filter" className="text-gray-700 font-medium mb-2 block">
                   <Building className="inline mr-2" size={16} />
@@ -350,7 +280,7 @@ const MyLoans = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <Label htmlFor="status-filter" className="text-gray-700 font-medium mb-2 block">
                   <Filter className="inline mr-2" size={16} />
@@ -371,13 +301,13 @@ const MyLoans = () => {
                 </select>
               </div>
             </div>
-          </GlassCard>
+          </div>
         </div>
 
         {/* Prêts groupés par SFD */}
         <div className="space-y-6">
           {Object.entries(filteredLoansBySfd).map(([sfd, loans]) => (
-            <GlassCard key={sfd} className="p-6">
+            <GlassCard key={sfd} className="p-6" hover={false}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
@@ -388,7 +318,7 @@ const MyLoans = () => {
                     <p className="text-sm text-gray-600">{loans.length} prêt{loans.length > 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   {canRequestNewLoan(sfd) ? (
                     <span className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-100 px-3 py-2 rounded-lg border border-green-200">
@@ -420,7 +350,7 @@ const MyLoans = () => {
                           </div>
                         </div>
                         <p className="text-sm text-gray-600 font-mono mb-3">{loan.id}</p>
-                        
+
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                           <div>
                             <span className="text-gray-600">Montant:</span>
@@ -455,7 +385,7 @@ const MyLoans = () => {
                           <span className="font-medium">{((loan.paidAmount / loan.amount) * 100).toFixed(0)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div 
+                          <div
                             className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
                             style={{ width: `${(loan.paidAmount / loan.amount) * 100}%` }}
                           />
@@ -475,16 +405,16 @@ const MyLoans = () => {
                           <>En attente d'approbation</>
                         )}
                       </div>
-                      
-                      <GlassButton 
-                        size="sm"
-                        onClick={() => handleViewLoan(loan.id)}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye size={16} />
-                        Voir détails
-                        <ArrowRight size={14} />
-                      </GlassButton>
+                      <Link href={`/dashboards/dashboard-client/loans/${loan.id}`}>
+                        <GlassButton
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Eye size={16} />
+                          Voir détails
+                          <ArrowRight size={14} />
+                        </GlassButton>
+                      </Link>
                     </div>
                   </div>
                 ))}

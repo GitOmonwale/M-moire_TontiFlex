@@ -10,7 +10,7 @@ const CTA = () => {
                     Prête à transformer votre épargne ?
                 </h2>
                 <p className="text-xl text-gray-700 mb-8">
-                    Rejoignez des milliers de femmes qui font déjà confiance à TontiFlex
+                    Rejoignez des milliers de personnes qui font déjà confiance à TontiFlex
                 </p>
                 <Link href={"/auth/register"}>
                     <button className="bg-primary text-white px-6 py-3 rounded-lg shadow-lg transition-colors duration-300">

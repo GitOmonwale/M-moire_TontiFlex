@@ -26,7 +26,7 @@ const Transactions= () => {
     });
     return (
         <div>
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                         <FileText className="mr-3 text-emerald-600" size={24} />

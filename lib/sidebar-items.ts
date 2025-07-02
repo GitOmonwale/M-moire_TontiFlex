@@ -8,7 +8,11 @@ import {
     CreditCard,
     File,
     Book,
-    LogIn
+    LogIn,
+    ClipboardList,
+    TrendingUp,
+    Target,
+    BarChart3
   } from 'lucide-react';
   import { RoleKey } from '@/constants/roles';
   
@@ -22,19 +26,19 @@ import {
   }
   
   export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
-    ADMINPLAT: [
+    ADMIN_PLATEFORME: [
       {
         id: 1,
         label: 'Utilisateurs',
         icon: Users,
-        link: '/admin/users',
+        link: '/dashboards/dashboard-admin',
         description: 'Gestion des utilisateurs'
       },
       {
         id: 2,
         label: 'Articles',
         icon: Book,
-        link: '/admin/blog',
+        link: '/dashboards/dashboard-admin/blog',
         description: 'Gestion des articles'
       }
     ],
@@ -101,7 +105,7 @@ import {
         id: 3,
         label: 'Épargnes',
         icon: PiggyBank,
-        link: '/dashboards/dashboard-client/savings',
+        link: '/dashboards/dashboard-client/saving-accounts',
         description: 'Vos épargnes'
       },
       {
@@ -164,5 +168,42 @@ import {
         description: 'Historique des actions'
       }
     ],
-    SUPERVISOR: []
+    SUPERVISEUR_SFD: [
+      {
+        id: 1,
+        label: 'Tableau de bord',
+        icon: Home,
+        link: '/dashboards/dashboard-supervisor',
+      },
+      {
+        id: 2,
+        label: 'Demandes de prêt',
+        icon: FileText,
+        link: '/dashboards/dashboard-supervisor/loan-requests',
+      },
+      {
+        id: 3,
+        label: 'Suivi remboursements',
+        icon: TrendingUp,
+        link: '/dashboards/dashboard-supervisor/loan-tracking',
+      },
+      {
+        id: 4,
+        label: 'Scores de fiabilité',
+        icon: Target,
+        link: '/dashboards/dashboard-supervisor/reliability-scores',
+      },
+      {
+        id: 5,
+        label: 'Rapports & Analytics',
+        icon: BarChart3,
+        link: '/dashboards/dashboard-supervisor/reports',
+      },
+      {
+        id: 6,
+        label: 'Historique décisions',
+        icon: ClipboardList,
+        link: '/dashboards/dashboard-supervisor/decision-history',
+      },
+    ]
   };

@@ -103,31 +103,6 @@ const LoanRequestsPage = () => {
     }
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-700 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getUrgencyLabel = (urgency: string) => {
-    switch (urgency) {
-      case 'high':
-        return 'Urgente';
-      case 'medium':
-        return 'Normale';
-      case 'low':
-        return 'Faible';
-      default:
-        return urgency;
-    }
-  };
 
   const getScoreColor = (score: number) => {
     if (score >= 85) return 'text-green-600 bg-green-100';
@@ -136,7 +111,7 @@ const LoanRequestsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -157,7 +132,7 @@ const LoanRequestsPage = () => {
         </div>
 
         {/* Statistiques rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -178,20 +153,7 @@ const LoanRequestsPage = () => {
               </div>
               <Clock className="text-orange-600" size={24} />
             </div>
-          </GlassCard>
-          
-          <GlassCard className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Urgentes</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {mockLoanRequests.filter(r => r.urgency === 'high').length}
-                </p>
-              </div>
-              <AlertTriangle className="text-red-600" size={24} />
-            </div>
-          </GlassCard>
-          
+          </GlassCard>      
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -206,7 +168,7 @@ const LoanRequestsPage = () => {
         </div>
 
         {/* Filtres et recherche */}
-        <GlassCard className="p-6 mb-8">
+        <div className="mb-8">
           <div className="flex flex-col lg:flex-row gap-4 items-center">
             <div className="flex items-center gap-2">
               <Filter className="text-emerald-600" size={20} />
@@ -240,19 +202,6 @@ const LoanRequestsPage = () => {
                 </SelectContent>
               </Select>
 
-              {/* Filtre par urgence */}
-              <Select value={filterUrgency} onValueChange={setFilterUrgency}>
-                <SelectTrigger className="w-48 bg-white/60">
-                  <SelectValue placeholder="Urgence" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tous">Toutes urgences</SelectItem>
-                  <SelectItem value="high">Urgente</SelectItem>
-                  <SelectItem value="medium">Normale</SelectItem>
-                  <SelectItem value="low">Faible</SelectItem>
-                </SelectContent>
-              </Select>
-
               {/* Tri */}
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-48 bg-white/60">
@@ -267,10 +216,10 @@ const LoanRequestsPage = () => {
               </Select>
             </div>
           </div>
-        </GlassCard>
+        </div>
 
         {/* Liste des demandes */}
-        <GlassCard className="p-6">
+        <GlassCard className="p-6" hover={false}>
           <div className="space-y-4">
             {filteredRequests.length > 0 ? (
               filteredRequests.map((request) => (
@@ -299,10 +248,7 @@ const LoanRequestsPage = () => {
                         
                         {/* Badges */}
                         <div className="flex gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(request.urgency)}`}>
-                            {getUrgencyLabel(request.urgency)}
-                          </span>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getScoreColor(request.reliabilityScore)}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap ${getScoreColor(request.reliabilityScore)}`}>
                             Score: {request.reliabilityScore}/100
                           </span>
                         </div>
@@ -368,7 +314,7 @@ const LoanRequestsPage = () => {
 
                         {/* Actions */}
                         <div className="flex flex-col gap-2 w-full lg:w-auto">
-                          <Link href={`/dashboard-supervisor/loan-requests/${request.id}`}>
+                          <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}`}>
                             <GlassButton 
                               size="sm" 
                               className="w-full lg:w-auto bg-emerald-600 hover:bg-emerald-700"
@@ -379,15 +325,17 @@ const LoanRequestsPage = () => {
                           </Link>
                           
                           {request.status === 'pending' && (
-                            <GlassButton 
-                              variant="outline" 
-                              size="sm"
-                              className="w-full lg:w-auto"
-                            >
-                              <Edit className="mr-1" size={14} />
-                              Traiter
-                            </GlassButton>
-                          )}
+  <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}?tab=decision&action=process`}>
+    <GlassButton 
+      variant="outline" 
+      size="sm"
+      className="w-full lg:w-auto border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+    >
+      <Edit className="mr-1" size={14} />
+      Traiter
+    </GlassButton>
+  </Link>
+)}
                         </div>
                       </div>
                     </div>

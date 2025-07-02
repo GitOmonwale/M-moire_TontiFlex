@@ -31,9 +31,6 @@ import {
 
 const SupervisorDashboard = () => {
   const [timeRange, setTimeRange] = useState("30j");
-
-  // Demandes urgentes (high priority)
-  const urgentRequests = mockLoanRequests.filter(req => req.urgency === 'high' && req.status === 'pending');
   
   // Prêts en retard
   const overdueLoans = mockActiveLoans.filter(loan => loan.status === 'late');
@@ -53,7 +50,7 @@ const SupervisorDashboard = () => {
         </div>
 
         {/* Cartes de statistiques principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <GlassCard className="p-6 border-l-4 border-l-emerald-500 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
@@ -64,10 +61,6 @@ const SupervisorDashboard = () => {
               <div className="h-12 w-12 bg-emerald-100 rounded-xl flex items-center justify-center">
                 <FileText className="text-emerald-600" size={24} />
               </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-orange-600">
-              <Clock size={16} className="mr-1" />
-              {urgentRequests.length} urgente(s)
             </div>
           </GlassCard>
 
@@ -104,78 +97,14 @@ const SupervisorDashboard = () => {
               +{((supervisorStats.approvedThisMonth / (supervisorStats.approvedThisMonth + supervisorStats.rejectedThisMonth)) * 100).toFixed(1)}% approbation
             </div>
           </GlassCard>
-
-          <GlassCard className="p-6 border-l-4 border-l-purple-500 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Portfolio géré</p>
-                <p className="text-2xl font-bold text-purple-600">{(supervisorStats.totalAmountManaged / 1000000).toFixed(1)}M</p>
-                <p className="text-xs text-gray-500">FCFA</p>
-              </div>
-              <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <DollarSign className="text-purple-600" size={24} />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-purple-600">
-              <Target size={16} className="mr-1" />
-              {supervisorStats.portfolioPerformance}% performance
-            </div>
-          </GlassCard>
         </div>
 
         {/* Section principale en grille */}
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Colonnes principales */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Demandes urgentes */}
-            {urgentRequests.length > 0 && (
-              <GlassCard className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <AlertTriangle className="mr-3 text-red-600" size={24} />
-                    Demandes Urgentes
-                  </h2>
-                  <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-                    {urgentRequests.length} demande(s)
-                  </span>
-                </div>
-
-                <div className="space-y-4">
-                  {urgentRequests.map((request) => (
-                    <div key={request.id} className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-4 border border-red-200">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{request.clientName}</h3>
-                          <p className="text-sm text-gray-600">{request.clientProfession}</p>
-                          <p className="text-sm text-gray-500">Score: {request.reliabilityScore}/100</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-red-600">{request.requestedAmount.toLocaleString()} FCFA</p>
-                          <p className="text-sm text-gray-600">{request.requestedDuration} mois</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-600">
-                          Demandé le {format(new Date(request.requestDate), 'dd MMM yyyy', { locale: fr })}
-                        </div>
-                        <div className="flex space-x-2">
-                          <Link href={`/dashboard-supervisor/loan-requests/${request.id}`}>
-                            <GlassButton size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                              <Eye className="mr-1" size={14} />
-                              Examiner
-                            </GlassButton>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-            )}
-
             {/* Demandes récentes */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <FileText className="mr-3 text-emerald-600" size={24} />
@@ -241,11 +170,11 @@ const SupervisorDashboard = () => {
           {/* Sidebar droite avec informations utiles */}
           <div className="space-y-6">
             {/* Actions rapides */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 flex-col gap-2 flex">
                 <Link href="/dashboard-supervisor/loan-requests">
-                  <GlassButton className="w-full h-12 text-left justify-start bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700">
+                  <GlassButton className="w-full text-left justify-start">
                     <FileText className="mr-3" size={20} />
                     <div>
                       <div className="font-medium">Examiner demandes</div>
@@ -255,7 +184,7 @@ const SupervisorDashboard = () => {
                 </Link>
                 
                 <Link href="/dashboard-supervisor/loan-tracking">
-                  <GlassButton variant="outline" className="w-full h-12 text-left justify-start border-2">
+                  <GlassButton variant="outline" className="w-full text-left justify-start">
                     <TrendingUp className="mr-3" size={20} />
                     <div>
                       <div className="font-medium">Suivi remboursements</div>
@@ -265,7 +194,7 @@ const SupervisorDashboard = () => {
                 </Link>
                 
                 <Link href="/dashboard-supervisor/reports">
-                  <GlassButton variant="outline" className="w-full h-12 text-left justify-start border-2">
+                  <GlassButton variant="outline" className="w-full text-left justify-start">
                     <Target className="mr-3" size={20} />
                     <div>
                       <div className="font-medium">Générer rapport</div>
@@ -278,7 +207,7 @@ const SupervisorDashboard = () => {
 
             {/* Prêts en retard */}
             {overdueLoans.length > 0 && (
-              <GlassCard className="p-6">
+              <GlassCard className="p-6" hover={false}>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <AlertTriangle className="mr-2 text-red-600" size={20} />
                   Prêts en Retard
@@ -303,7 +232,7 @@ const SupervisorDashboard = () => {
             )}
 
             {/* Statistiques de performance */}
-            <GlassCard className="p-6">
+            <GlassCard className="p-6" hover={false}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance du Mois</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -327,25 +256,6 @@ const SupervisorDashboard = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-            </GlassCard>
-
-            {/* Raccourcis utiles */}
-            <GlassCard className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Raccourcis</h3>
-              <div className="space-y-2">
-                <Link href="/dashboard-supervisor/reliability-scores" className="flex items-center p-2 rounded-lg hover:bg-emerald-50 transition-colors">
-                  <Users className="mr-2 text-emerald-600" size={16} />
-                  <span className="text-sm">Scores de fiabilité</span>
-                </Link>
-                <Link href="/dashboard-supervisor/decision-history" className="flex items-center p-2 rounded-lg hover:bg-emerald-50 transition-colors">
-                  <Calendar className="mr-2 text-emerald-600" size={16} />
-                  <span className="text-sm">Historique décisions</span>
-                </Link>
-                <button className="flex items-center p-2 rounded-lg hover:bg-emerald-50 transition-colors w-full text-left">
-                  <Send className="mr-2 text-emerald-600" size={16} />
-                  <span className="text-sm">Envoyer rapport</span>
-                </button>
               </div>
             </GlassCard>
           </div>

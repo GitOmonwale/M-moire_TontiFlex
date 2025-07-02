@@ -32,7 +32,7 @@ const Home = () => {
     {
       icon: Users,
       title: "Communauté Solidaire",
-      description: "Rejoignez des groupes de femmes entrepreneures"
+      description: "Rejoignez des groupes de personnes entrepreneures"
     }
   ];
 
