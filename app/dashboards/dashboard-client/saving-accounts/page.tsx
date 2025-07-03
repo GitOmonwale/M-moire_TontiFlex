@@ -219,7 +219,7 @@ const SavingsAccountsOverview = () => {
         <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Comptes Épargne</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Mes Comptes Épargne</h1>
               <p className="text-gray-600">Gérez vos épargnes auprès de différents SFD</p>
             </div>
             <div className="">

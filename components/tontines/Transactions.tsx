@@ -26,10 +26,9 @@ const Transactions= () => {
     });
     return (
         <div>
-            <GlassCard className="p-6" hover={false}>
+            <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                        <FileText className="mr-3 text-emerald-600" size={24} />
+                    <h2 className="text-2xl font-semibold text-black flex items-center">
                         Historique des Opérations
                     </h2>
                     <div className="flex gap-3">
@@ -101,7 +100,7 @@ const Transactions= () => {
                         </GlassButton>
                     </Link>
                 </div>
-            </GlassCard>
+            </div>
         </div>
     )
 }

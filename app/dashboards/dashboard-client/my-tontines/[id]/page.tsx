@@ -114,7 +114,7 @@ const TontineDetailsPage = () => {
     <div className="">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header moderne */}
-        <div className="mb-8">
+        <div className="mb-8 flex justify-between gap-16">
           <div className="flex items-center mb-6">
             <GlassButton
               variant="outline"
@@ -124,7 +124,7 @@ const TontineDetailsPage = () => {
               <ArrowLeft size={18} />
             </GlassButton>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">{tontine.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{tontine.name}</h1>
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center">
                   <Building className="mr-2" size={16} />
@@ -144,7 +144,9 @@ const TontineDetailsPage = () => {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+           
+          </div>
+          <div className="flex gap-2">
               <GlassButton className="w-full h-12 text-left justify-start bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer"
                 onClick={() => setIsContributionModalOpen(true)}
               >
@@ -163,7 +165,6 @@ const TontineDetailsPage = () => {
                 </div>
               </GlassButton>
             </div>
-          </div>
         </div>
 
         {/* Stats cards modernes */}

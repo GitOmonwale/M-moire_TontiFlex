@@ -287,7 +287,7 @@ const LoanDetail = () => {
       <div className="container mx-auto px-4 py-8">
         {/* En-tête avec bouton retour */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/my-loans">
+          <Link href="/dashboards/dashboard-client/loans">
             <Button
               variant="outline"
               className="flex items-center gap-2"
@@ -297,7 +297,7 @@ const LoanDetail = () => {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-primary">Détails du Prêt</h1>
+            <h1 className="text-2xl font-bold text-black">Détails du Prêt</h1>
             <p className="text-gray-600">Prêt N° {loanDetails.id}</p>
           </div>
         </div>
@@ -399,7 +399,7 @@ const LoanDetail = () => {
         </div>
 
         {/* Échéancier de remboursement */}
-        <GlassCard hover={false}>
+        <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
               <Calendar size={24} />
@@ -477,7 +477,7 @@ const LoanDetail = () => {
               </TableBody>
             </Table>
           </div>
-        </GlassCard>
+        </div>
 
         {/* Modal du formulaire de paiement */}
         <Dialog open={isPaymentFormOpen} onOpenChange={setIsPaymentFormOpen}>

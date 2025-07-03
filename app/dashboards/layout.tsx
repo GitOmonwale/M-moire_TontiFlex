@@ -7,6 +7,7 @@ import SideBar from '@/components/navigation/SideBar';
 import { Header } from '@/components/dashboard/Header';
 import { toast, Toaster } from 'sonner';
 import { useRouter } from 'next/navigation';
+import DashboardSkeleton from '@/skeletons/DashboardSkeleton';
 
 
 interface DashboardLayoutProps {
@@ -27,8 +28,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (isLoading || !isAuthenticated || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+      <div>
+        <DashboardSkeleton />
       </div>
     );
   }

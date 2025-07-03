@@ -19,7 +19,7 @@ export const ROLE_MAPPING: Record<RoleKey, string> = {
 } as const;
 
 export const DEFAULT_ROUTES: Record<RoleKey, string> = {
-  [ROLES.ADMIN_PLATEFORME]: '/dashboards/dashboard-admin',
+  [ROLES.ADMIN_PLATEFORME]: '/dashboards/dashboard-admin_tontiflex',
   [ROLES.ADMIN_SFD]: '/dashboards/dashboard-adminsfd',
   [ROLES.CLIENT]: '/dashboards/dashboard-client',
   [ROLES.AGENT_SFD]: '/dashboards/dashboard-agent',

@@ -9,11 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
-  const router = useRouter();
   const { login, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -64,7 +62,7 @@ const Login = () => {
       />
       <div className="container m-auto px-4 py-16">
         <div className="max-w-md mx-auto">
-          <GlassCard>
+          <GlassCard hover={false}>
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-primary mb-2">Connexion</h1>
               <p className="text-gray-600">Ravi de vous revoir. ✨</p>

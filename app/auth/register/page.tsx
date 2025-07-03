@@ -191,7 +191,7 @@ const Register = () => {
           </div>
             <div className="container m-auto px-8 py-16">
                 <div className="max-w-2xl mx-auto">
-                    <GlassCard>
+                    <GlassCard hover={false}>
                         <div className="text-center mb-8">
                             <h1 className="text-3xl font-bold text-primary mb-2">Créer un compte</h1>
                             <p className="text-gray-600">Rejoignez la communauté TontiFlex</p>

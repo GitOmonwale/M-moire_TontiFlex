@@ -27,7 +27,7 @@ const ClientProfile = () => {
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
-          <GlassCard>
+          <GlassCard hover={false}>
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-primary mb-2 flex items-center justify-center">
                 <User className="mr-2" size={32} />
