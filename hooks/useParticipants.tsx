@@ -21,21 +21,41 @@ export interface TontineParticipant {
   transactionAdhesion?: string;
 }
 
+export interface CotisationResponse {
+  success: boolean;
+  message: string;
+  payment_link: string;
+  cotisations: Cotisation[];
+  transaction_kkiapay: TransactionKkiapay;
+  solde: Solde;
+  cycles_cotises: CycleCotise[];
+}
+
 export interface Cotisation {
   id: number;
-  montant: string;
-  date_cotisation: string;
-  numero_transaction: string;
-  statut: CotisationStatus;
-  participant_id: string;
-  client_nom: string;
-  tontine_nom: string;
-  cycle_numero: number;
-  jour_carnet?: number;
+  montant: number;
   est_commission_sfd: boolean;
-  cycle_display: string;
-  type_cotisation: string;
-  transaction_kkiapay?: string;
+  cycle_numero: number;
+  statut: "pending" | "completed" | "failed" | string;
+}
+
+export interface TransactionKkiapay {
+  id: string;
+  reference: string;
+  status: "initialized" | "success" | "failed" | string;
+  montant: number;
+}
+
+export interface Solde {
+  nouveau_solde: number;
+}
+
+export interface CycleCotise {
+  cycle_numero: number;
+  cycle_debut: string;
+  jours_coches: number[];
+  commission_sfd: boolean;
+  montant: number;
 }
 
 export interface CreateParticipantData {
@@ -61,7 +81,7 @@ export interface UpdateParticipantData {
 }
 
 export interface CotiserData {
-  nombre_mises: number; // 1 à 31 mises
+  nombre_mises: number;
   numero_telephone: string;
   commentaire?: string;
 }
@@ -76,7 +96,7 @@ export interface ParticipantDetailsComplets {
   total_cotise: string;
   sfd_nom: string;
   statut_tontine: string;
-  carnets_cotisation: any[]; // Array des carnets de cotisation
+  carnets_cotisation: any[];
 }
 
 export interface ParticipantsStats {
@@ -91,6 +111,26 @@ export interface ParticipantsStats {
   evolution_mensuelle: any[];
   repartition_par_sfd: any[];
   segmentation_montants: any[];
+}
+
+// 🆕 Interface pour les données de paiement KKiaPay
+export interface KKiaPayPaymentData {
+  transactionId: string;
+  phone?: string;
+  amount?: number;
+  status?: string;
+}
+
+// 🆕 Interface pour la confirmation de paiement
+export interface PaymentConfirmationData {
+  kkiapay_transaction_id: string;
+  internal_transaction_id: string;
+  reference: string;
+  amount: number;
+  phone: string;
+  status: 'success' | 'failed';
+  timestamp: string;
+  cotisation_data: CotiserData;
 }
 
 interface PaginatedResponse<T> {
@@ -115,8 +155,10 @@ interface useParticipantsResults {
   updateParticipant: (id: string, participantData: UpdateParticipantData | FormData) => Promise<TontineParticipant>;
   deleteParticipant: (id: string) => Promise<boolean>;
 
-  // Cotisations - Nouveau système avec nombre de mises
-  cotiser: (id: string, cotiserData: CotiserData) => Promise<Cotisation>;
+  // 🆕 Cotisations avec support KKiaPay
+  createCotisationForPayment: (id: string, cotiserData: CotiserData) => Promise<CotisationResponse>;
+  confirmPayment: (confirmationData: PaymentConfirmationData) => Promise<void>;
+  cotiser: (id: string, cotiserData: CotiserData) => Promise<CotisationResponse>;
 
   // Statistiques
   fetchParticipantsStats: () => Promise<ParticipantsStats | null>;
@@ -323,7 +365,88 @@ export function useParticipants(): useParticipantsResults {
     }
   };
 
-  // 🆕 NOUVELLE LOGIQUE - Cotiser avec nombre de mises
+  // 🆕 Créer une cotisation pour le paiement (sans effectuer le paiement)
+  const createCotisationForPayment = async (id: string, cotiserData: CotiserData): Promise<CotisationResponse> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/participants/${id}/cotiser/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(cotiserData),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors de la création de la cotisation';
+        if (response.status === 400) {
+          errorMessage = 'Nombre de mises invalide ou carnet complet';
+        } else if (response.status === 409) {
+          errorMessage = 'Pas assez de cases libres dans le carnet';
+        }
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const cotisationResult = await response.json();
+      console.log('✅ Cotisation créée:', cotisationResult);
+      
+      return cotisationResult;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 Confirmer le paiement après succès KKiaPay
+  const confirmPayment = async (confirmationData: PaymentConfirmationData): Promise<void> => {
+    try {
+      const webhookData = {
+        transactionId: confirmationData.kkiapay_transaction_id,
+        isPaymentSucces: confirmationData.status === 'success',
+        event: confirmationData.status === 'success' ? 'payment.success' : 'payment.failed',
+        timestamp: confirmationData.timestamp,
+        amount: confirmationData.amount,
+        status: confirmationData.status.toUpperCase(),
+        data: {
+          transaction_id: confirmationData.internal_transaction_id,
+          reference: confirmationData.reference,
+          type: 'cotisation_tontine',
+          form_data: confirmationData.cotisation_data
+        }
+      };
+
+      const response = await fetch(`${baseUrl}/payments/webhook/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur confirmation paiement: ${response.status}`);
+      }
+
+      console.log('✅ Paiement confirmé avec succès');
+    } catch (err) {
+      console.error('❌ Erreur confirmation paiement:', err);
+      throw err;
+    }
+  };
+
+  // 🔄 Cotiser - Version classique (pour compatibilité)
   const cotiser = async (id: string, cotiserData: CotiserData) => {
     setLoading(true);
     setError(null);
@@ -421,6 +544,8 @@ export function useParticipants(): useParticipantsResults {
     createParticipant,
     updateParticipant,
     deleteParticipant,
+    createCotisationForPayment,
+    confirmPayment,
     cotiser,
     fetchParticipantsStats,
   };

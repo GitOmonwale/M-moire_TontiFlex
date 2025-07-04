@@ -42,6 +42,8 @@ import { format, startOfMonth, endOfMonth, subMonths, differenceInMonths } from 
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import WithdrawalForm from '@/components/forms/WithdrawalForm';
+import DepositForm from '@/components/forms/DepositForm';
 
 // Types (réutilisés de la page overview)
 interface SavingsAccount {
@@ -194,8 +196,58 @@ const SavingsAccountDetails = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactionHistory);
   const [filter, setFilter] = useState<'tous' | 'depot' | 'retrait'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+
+  const handleWithdraw = async (withdrawData: any) => {
+    try {
+      setLoading(true);
+      console.log('Processing withdrawal:', withdrawData);
+      // Here you would typically call your API to process the withdrawal
+      // For example: await api.processWithdrawal(account.id, withdrawData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the UI to reflect the withdrawal
+      // For now, we'll just show a success message
+      alert('Retrait effectué avec succès');
+      setIsWithdrawalModalOpen(false);
+      
+      // Refresh account data
+      // await loadAccountData();
+    } catch (error) {
+      console.error('Error processing withdrawal:', error);
+      alert('Une erreur est survenue lors du retrait');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDeposit = async (depositData: any) => {
+    try {
+      setLoading(true);
+      console.log('Processing deposit:', depositData);
+      // Here you would typically call your API to process the deposit
+      // For example: await api.processDeposit(account.id, depositData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the UI to reflect the deposit
+      // For now, we'll just show a success message
+      alert('Dépôt effectué avec succès');
+      setIsDepositModalOpen(false);
+      
+      // Refresh account data
+      // await loadAccountData();
+    } catch (error) {
+      console.error('Error processing deposit:', error);
+      alert('Une erreur est survenue lors du dépôt');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculs statistiques
   const monthsActive = differenceInMonths(new Date(), new Date(account.dateCreation));
@@ -267,7 +319,7 @@ const SavingsAccountDetails = () => {
           {/* Carte Solde Principal */}
           <div className="lg:col-span-5">
             <GlassCard className="p-8 text-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10"></div>
+              <div className="absolute inset-0"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -304,14 +356,14 @@ const SavingsAccountDetails = () => {
                 {account.statut === 'actif' && (
                   <div className="grid grid-cols-2 gap-3">
                     <GlassButton
-                      onClick={() => setShowDepositModal(true)}
+                      onClick={() => setIsDepositModalOpen(true)}
                       className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
                     >
                       <ArrowUp size={16} className="mr-2" />
                       Déposer
                     </GlassButton>
                     <GlassButton
-                      onClick={() => setShowWithdrawModal(true)}
+                       onClick={() => setIsWithdrawalModalOpen(true)}
                       variant="outline"
                     >
                       <ArrowDown size={16} className="mr-2" />
@@ -632,6 +684,48 @@ const SavingsAccountDetails = () => {
           </div>
         </div>
       </div>
+      {
+                isWithdrawalModalOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+                            <button
+                                onClick={() => setIsWithdrawalModalOpen(false)}
+                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                            <WithdrawalForm
+                                isOpen={isWithdrawalModalOpen}
+                                onClose={() => setIsWithdrawalModalOpen(false)}
+                                details={account}
+                                loading={loading}
+                                onSubmit={handleWithdraw}
+                            />
+                        </div>
+                    </div>
+                )
+            }
+            {
+                isDepositModalOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+                            <button
+                                onClick={() => setIsDepositModalOpen(false)}
+                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                            <DepositForm
+                                isOpen={isDepositModalOpen}
+                                onClose={() => setIsDepositModalOpen(false)}
+                                details={account}
+                                loading={loading}
+                                onSubmit={handleDeposit}
+                            />
+                        </div>
+                    </div>
+                )
+            }
     </div>
   );
 };

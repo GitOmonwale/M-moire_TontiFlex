@@ -8,6 +8,7 @@ interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+  my_tontines: T[];
 }
 
 interface useTontinesResults {
@@ -125,7 +126,8 @@ export function useTontines(): useTontinesResults {
       }
       
       const data: PaginatedResponse<MyTontine> = await response.json();
-      return data.results || [];
+      console.log("data", data);
+      return data.my_tontines || [];
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);

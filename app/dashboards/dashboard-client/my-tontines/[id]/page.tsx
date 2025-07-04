@@ -4,7 +4,7 @@ import { useParticipants } from '@/hooks/useParticipants';
 import { useCarnetsCotisation } from '@/hooks/useCarnets';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { Calendar, CheckCircle, Star, Clock, Target, Award } from 'lucide-react';
+import { Calendar, CheckCircle, Star, Clock, Target, X } from 'lucide-react';
 import { Tabs, Tab, Card, CardBody } from "@heroui/react";
 import { format, addDays, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -14,36 +14,28 @@ import {
     ArrowLeft, Building, TrendingUp, CreditCard, FileText, AlertCircle, Plus, Minus, Wallet, Activity, Loader2,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from 'sonner';
 
 const TontineDetailsPage = () => {
     const params = useParams();
     const router = useRouter();
-    const participantId = "c18d3f68-6cd2-49ef-9748-30d6b412c309";
+    const participantId = params.id as string;
 
     const {
         participantDetails,
         loading,
         error,
         fetchParticipantDetailsComplets,
-        cotiser
+        createCotisationForPayment,
+        confirmPayment
     } = useParticipants();
 
     const {
-        calculerStatistiquesCarnet,
-        cocherMises,
-        genererNouveauCarnet,
         loading: carnetLoading
     } = useCarnetsCotisation();
 
     const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
     const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
-
-    // État pour le formulaire de cotisation
-    const [cotisationData, setCotisationData] = useState({
-        nombre_mises: 1,
-        numero_telephone: '',
-        commentaire: ''
-    });
 
     useEffect(() => {
         if (participantId) {
@@ -51,35 +43,83 @@ const TontineDetailsPage = () => {
         }
     }, []);
 
-    // Fonction pour effectuer une cotisation selon la VRAIE logique système
-    const effectuerCotisationAwa = async (nombreMises: number) => {
+    // 🆕 Fonction pour gérer la cotisation avec KKiaPay
+    const handleCotisationSubmit = async (nombreMises: number, cotisationData: any) => {
         try {
-            const carnetsDisponibles = participantDetails?.carnets_cotisation || [];
-            const carnetActuelData = carnetsDisponibles.find(c => {
-                const joursEcoules = Math.floor((new Date().getTime() - new Date(c.cycle_debut).getTime()) / (1000 * 60 * 60 * 24));
-                const misesPayees = c.mises_cochees.filter(Boolean).length;
-                return joursEcoules < 31 && misesPayees < 31;
-            });
-
-            if (carnetActuelData) {
-                // Prédire les cases qui seront cochées avec le hook useCarnetsCotisation
-                const nouvellesMises = cocherMises(carnetActuelData, nombreMises);
-                console.log(`🎯 Prochaines cases à cocher avec le hook useCarnetsCotisation :`,
-                    nouvellesMises.map((coche, i) => coche && !carnetActuelData.mises_cochees[i] ? i + 1 : null).filter(Boolean)
-                );
-            }
-
-            await cotiser(participantId, {
+            console.log('📝 Soumission cotisation:', { nombreMises, cotisationData });
+            
+            // Créer la cotisation (sans paiement pour l'instant)
+            const response = await createCotisationForPayment(participantId, {
                 nombre_mises: nombreMises,
                 numero_telephone: cotisationData.numero_telephone,
-                commentaire: `Cotisation - Cochage chronologique intelligent`
+                commentaire: cotisationData.commentaire || `Cotisation - ${nombreMises} mise(s)`
             });
 
-            setIsContributionModalOpen(false);
-            // Rafraîchir les données après cotisation
-            await fetchParticipantDetailsComplets(participantId);
+            console.log('✅ Réponse cotisation:', response);
+            return response;
+            
         } catch (error) {
-            console.error('Erreur lors de la cotisation:', error);
+            console.error('❌ Erreur création cotisation:', error);
+            throw error;
+        }
+    };
+
+    // 🆕 Callback de succès de paiement KKiaPay
+    const handlePaymentSuccess = async (kkiapayResponse: any, cotisationData: any) => {
+        try {
+            console.log('🎉 Paiement réussi, confirmation en cours...', kkiapayResponse);
+            
+            // Confirmer le paiement auprès du backend
+            await confirmPayment({
+                kkiapay_transaction_id: kkiapayResponse.transactionId,
+                internal_transaction_id: participantDetails?.id || '',
+                reference: `REF-${Date.now()}`,
+                amount: cotisationData.nombre_mises * parseFloat(participantDetails?.montantMise || '0'),
+                phone: cotisationData.numero_telephone,
+                status: 'success',
+                timestamp: new Date().toISOString(),
+                cotisation_data: cotisationData
+            });
+
+            // Rafraîchir les détails du participant
+            await fetchParticipantDetailsComplets(participantId);
+            
+            toast.success('🎉 Cotisation confirmée et enregistrée avec succès!');
+            
+        } catch (error) {
+            console.error('❌ Erreur confirmation paiement:', error);
+            toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
+        }
+    };
+
+    // 🆕 Callback d'erreur de paiement KKiaPay
+    const handlePaymentError = (error: any) => {
+        console.log('❌ Erreur de paiement:', error);
+        toast.error(`❌ Paiement échoué: ${error.message || 'Erreur inconnue'}`);
+    };
+
+    // Fonction pour effectuer une cotisation rapide (boutons dans les carnets)
+    const effectuerCotisationRapide = async (nombreMises: number) => {
+        try {
+            // Pour les boutons rapides, on utilise un numéro de test
+            const cotisationData = {
+                nombre_mises: nombreMises,
+                numero_telephone: '+22997000000', // Numéro de test
+                commentaire: `Cotisation rapide - ${nombreMises} mise(s)`
+            };
+
+            const response = await createCotisationForPayment(participantId, cotisationData);
+            
+            // Ouvrir automatiquement le widget KKiaPay pour le paiement rapide
+            // Note: Ceci nécessiterait d'intégrer le hook useKKiaPay ici aussi
+            toast.info('💳 Cotisation créée. Ouverture du système de paiement...');
+            
+            // Rafraîchir après succès
+            await fetchParticipantDetailsComplets(participantId);
+            
+        } catch (error) {
+            console.error('Erreur lors de la cotisation rapide:', error);
+            toast.error('Erreur lors de la cotisation rapide');
         }
     };
 
@@ -131,98 +171,9 @@ const TontineDetailsPage = () => {
         );
     }
 
-    // Génération des carnets selon la VRAIE logique du système + carnets futurs prédictifs
-    const carnetsDisponibles = participantDetails?.carnets_cotisation || [];
-
-    // Générer des carnets futurs prédictifs pour affichage (désactivés)
-    const genererCarnetsFuturs = () => {
-        if (carnetsDisponibles.length === 0) return [];
-
-        const dernierCarnet = carnetsDisponibles[carnetsDisponibles.length - 1];
-        const dateDernierCarnet = new Date(dernierCarnet.cycle_debut);
-        const carnetsFuturs = [];
-
-        // Générer 3 carnets futurs prédictifs
-        for (let i = 1; i <= (12 - carnetsDisponibles.length); i++) {
-            const dateDebut = new Date(dateDernierCarnet);
-            dateDebut.setDate(dateDebut.getDate() + (31 * i));
-
-            carnetsFuturs.push({
-                id: `futur-${i}`,
-                cycle_debut: dateDebut.toISOString().split('T')[0],
-                mises_cochees: Array(31).fill(false),
-                mises_completees: 0,
-                client_nom: participantDetails.client_nom,
-                tontine_nom: participantDetails.tontine_nom,
-                date_creation: dateDebut.toISOString(),
-                date_modification: dateDebut.toISOString(),
-                client: participantDetails.client,
-                tontine: dernierCarnet.tontine,
-                estCarnetFutur: true // Marqueur pour les carnets prédictifs
-            });
-        }
-
-        return carnetsFuturs;
-    };
-
-    const carnetsFuturs = genererCarnetsFuturs();
-    const tousLesCarnets = [...carnetsDisponibles, ...carnetsFuturs];
-
-    const carnetsReels = tousLesCarnets
-        .sort((a, b) => new Date(a.cycle_debut).getTime() - new Date(b.cycle_debut).getTime())
-        .map((carnet, index) => {
-            const dateDebut = new Date(carnet.cycle_debut);
-            const dateFin = new Date(dateDebut);
-            dateFin.setDate(dateFin.getDate() + 30); // 31 jours total
-
-            const aujourdhui = new Date();
-            const joursEcoules = Math.floor((aujourdhui.getTime() - dateDebut.getTime()) / (1000 * 60 * 60 * 24));
-
-            // États du carnet selon la vraie logique
-            const estExpire = joursEcoules >= 31;
-            const estActif = !estExpire && joursEcoules >= 0 && !carnet.estCarnetFutur;
-            const estFutur = joursEcoules < 0 || carnet.estCarnetFutur;
-
-            const misesPayees = carnet.mises_cochees.filter(Boolean).length;
-            const estPlein = misesPayees >= 31;
-
-            // ✅ UTILISATION DU HOOK useCarnetsCotisation pour les statistiques (seulement pour les vrais carnets)
-            const stats = !carnet.estCarnetFutur ? calculerStatistiquesCarnet(carnet) : {
-                joursPayes: 0,
-                joursRestants: 31,
-                pourcentageCompletion: 0,
-                premierJourLibre: 1
-            };
-
-            // Calcul des jours avant le début pour les carnets futurs
-            const joursAvantDebut = estFutur ? Math.ceil((dateDebut.getTime() - aujourdhui.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-
-            return {
-                ...carnet,
-                numero: index + 1,
-                dateDebut,
-                dateFin,
-                joursEcoules,
-                joursAvantDebut,
-                estExpire,
-                estActif,
-                estFutur,
-                estPlein,
-                misesPayees: stats.joursPayes,
-                misesRestantes: stats.joursRestants,
-                pourcentageCompletion: stats.pourcentageCompletion,
-                prochaineCaseACocher: stats.premierJourLibre,
-                statut: estFutur ? `Débute dans ${joursAvantDebut} jours` :
-                    estExpire ? 'Fermé automatiquement' :
-                        estPlein ? 'Plein (31/31)' :
-                            estActif ? 'Actif' : 'Futur'
-            };
-        });
-
-    const carnetActif = carnetsReels.find(c => c.estActif && !c.estPlein && !c.estCarnetFutur);
-    const totalPayeGlobal = carnetsReels.filter(c => !c.estCarnetFutur).reduce((total, carnet) => total + carnet.misesPayees, 0);
-    const totalPossibleGlobal = carnetsReels.filter(c => !c.estCarnetFutur).length * 31;
-    const totalOublie = totalPossibleGlobal - totalPayeGlobal;
+    function effectuerRetrait(retraitData: any): Promise<void> {
+        throw new Error('Function not implemented.');
+    }
 
     return (
         <div className="">
@@ -261,10 +212,7 @@ const TontineDetailsPage = () => {
                             className="w-full h-12 text-left justify-start bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer"
                             onClick={() => setIsContributionModalOpen(true)}
                         >
-                            <Plus className="mr-3" size={20} />
-                            <div>
-                                <div className="font-medium">Cotiser</div>
-                            </div>
+                            Cotiser
                         </GlassButton>
 
                         <GlassButton
@@ -272,7 +220,6 @@ const TontineDetailsPage = () => {
                             className="w-full h-12 text-left justify-start border-2 cursor-pointer"
                             onClick={() => setIsWithdrawalModalOpen(true)}
                         >
-                            <CreditCard className="mr-3" size={20} />
                             <div>
                                 <div className="font-medium">Retirer</div>
                             </div>
@@ -281,7 +228,7 @@ const TontineDetailsPage = () => {
                 </div>
 
                 {/* Stats cards modernes */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <GlassCard className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -326,21 +273,6 @@ const TontineDetailsPage = () => {
                             </div>
                         </div>
                     </GlassCard>
-
-                    <GlassCard className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600 mb-1">Carnets</p>
-                                <p className="text-2xl font-bold text-orange-600">
-                                    #{carnetsReels.filter(c => !c.estCarnetFutur).length}
-                                </p>
-                                <p className="text-xs text-gray-500">Réels + {carnetsReels.filter(c => c.estCarnetFutur).length} futurs</p>
-                            </div>
-                            <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                                <Activity className="text-orange-600" size={24} />
-                            </div>
-                        </div>
-                    </GlassCard>
                 </div>
 
                 <div className="flex w-full flex-col">
@@ -348,132 +280,113 @@ const TontineDetailsPage = () => {
                         <Tab key="Carnets" title="Carnets de Cotisation">
                             <Card>
                                 <CardBody>
-
                                     <div className="space-y-6">
-                                        {/* Tous les carnets organisés par statut */}
-                                        <div>
-
-                                            {/* Grille unifiée pour tous les carnets */}
-                                            <div className="grid grid-cols-3 gap-4">
-                                                {carnetsReels.map(carnet => (
-                                                    <GlassCard
-                                                        hover={false}
-                                                        key={carnet.id}
-                                                        className={`p-4 ${carnet.estActif
-                                                            ? ''
-                                                            : carnet.estExpire
-                                                                ? 'opacity-75'
-                                                                : carnet.estFutur
-                                                                    ? 'opacity-50 bg-gray-50 border-dashed border-2 border-gray-300'
-                                                                    : ''
-                                                            }`}
-                                                    >
-                                                        <div className="mb-3">
-                                                            <div className="flex items-center justify-between mb-2">
-                                                                <h5 className={`text-base font-semibold ${carnet.estActif ? 'text-gray-900' :
-                                                                    carnet.estFutur ? 'text-gray-500' : 'text-gray-700'
-                                                                    }`}>
-                                                                    Carnet #{carnet.numero}
-                                                                </h5>
-                                                            </div>
-                                                            <div className={`text-sm ${carnet.estFutur ? 'text-gray-500' : 'text-gray-600'}`}>
-                                                                {format(carnet.dateDebut, 'dd MMM', { locale: fr })} - {format(carnet.dateFin, 'dd MMM yyyy', { locale: fr })}
-                                                            </div>
-
-                                                            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                                                                <div>
-                                                                    <div className={`text-base font-bold ${carnet.estFutur ? 'text-gray-400' : 'text-green-600'}`}>
-                                                                        {carnet.estFutur ? '0' : carnet.misesPayees}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500">Payées</div>
-                                                                </div>
-                                                                <div>
-                                                                    <div className={`text-base font-bold ${carnet.estFutur ? 'text-gray-400' :
-                                                                        carnet.estExpire ? 'text-gray-400' : 'text-orange-600'
-                                                                        }`}>
-                                                                        {carnet.estFutur ? '31' : carnet.estExpire ? carnet.misesRestantes : carnet.misesRestantes}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500">
-                                                                        {carnet.estExpire ? 'Oubliées' : carnet.estFutur ? 'En attente' : 'Libres'}
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <div className={`text-base font-bold ${carnet.estFutur ? 'text-gray-400' : 'text-blue-600'}`}>
-                                                                        {carnet.estFutur ? '0' : carnet.pourcentageCompletion}%
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500">Complété</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Grille numérotée selon le type de carnet */}
-                                                        <div className="grid grid-cols-7 gap-1 mb-3">
-                                                            {(carnet.estFutur ? Array(31).fill(false) : carnet.mises_cochees).map((estCoche: boolean, index: number) => {
-                                                                const numeroCase = index + 1;
-                                                                const estCommissionSfd = index === 0 && estCoche && !carnet.estFutur;
-                                                                const estProchainLibre = carnet.estActif && carnet.prochaineCaseACocher === numeroCase;
-
-                                                                return (
-                                                                    <div
-                                                                        key={numeroCase}
-                                                                        className={`w-4 h-4 rounded text-[8px] font-medium flex items-center justify-center transition-all ${carnet.estFutur
-                                                                            ? 'bg-gray-200 border border-gray-300 text-gray-400'
-                                                                            : estCommissionSfd
-                                                                                ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
-                                                                                : estCoche
-                                                                                    ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
-                                                                                    : estProchainLibre
-                                                                                        ? 'bg-blue-200 text-blue-800 border border-blue-400 scale-110'
-                                                                                        : 'bg-gray-200 text-gray-600'}`}
-                                                                    >
-                                                                        {numeroCase}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        {/* Actions ou statut selon le type de carnet */}
-                                                        {carnet.estActif ? (
-                                                            <div className="flex gap-2">
-                                                                <GlassButton
-                                                                    onClick={() => effectuerCotisationAwa(1)}
-                                                                    disabled={loading || carnet.estPlein}
-                                                                    className="flex-1 text-xs py-1"
-                                                                    size="sm"
-                                                                >
-                                                                    Payer 1 mise
-                                                                    {carnet.prochaineCaseACocher && (
-                                                                        <span className="ml-1">→ {carnet.prochaineCaseACocher}</span>
-                                                                    )}
-                                                                </GlassButton>
-                                                                <GlassButton
-                                                                    onClick={() => effectuerCotisationAwa(5)}
-                                                                    disabled={loading || carnet.misesRestantes < 5}
-                                                                    variant="outline"
-                                                                    className="flex-1 text-xs py-1"
-                                                                    size="sm"
-                                                                >
-                                                                    Payer 5
-                                                                </GlassButton>
-                                                            </div>
-                                                        ) : carnet.estExpire && carnet.misesRestantes > 0 ? (
-                                                            <div className="text-center">
-                                                                <div className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                                                    ✨ Fresh start appliqué
-                                                                </div>
-                                                            </div>
-                                                        ) : carnet.estFutur ? (
-                                                            <div className="text-center">
-                                                                <div className="inline-flex items-center px-2 py-1 bg-gray-200 text-gray-500 rounded-full text-xs">
-                                                                    🔒 Carnet désactivé
-                                                                </div>
-                                                            </div>
-                                                        ) : null}
-                                                    </GlassCard>
-                                                ))}
+                                        {/* Message d'information KKiaPay */}
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <div className="flex items-center">
+                                                <CreditCard className="h-5 w-5 text-blue-600 mr-3" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-blue-800">
+                                                        Paiements sécurisés avec KKiaPay
+                                                    </p>
+                                                    <p className="text-xs text-blue-600">
+                                                        Payez vos cotisations via Mobile Money (MTN, Moov, etc.)
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
+
+                                        {/* Grille des carnets */}
+                                        <div className="grid grid-cols-3 gap-4">
+                                            {participantDetails.carnets_cotisation.map(carnet => (
+                                                <GlassCard
+                                                    hover={false}
+                                                    key={carnet.cycle_numero}
+                                                    className={`p-4 ${carnet.carnet_complet ? 'bg-green-50 border-green-200' : ''}`}
+                                                >
+                                                    <div className="mb-3">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <h5 className="text-base font-semibold text-gray-900">
+                                                                Carnet #{carnet.cycle_numero}
+                                                            </h5>
+                                                        </div>
+                                                        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                                                            <div>
+                                                                <div className="text-base font-bold text-green-600">
+                                                                    {carnet.jours_coches}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">Payées</div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-base font-bold text-orange-600">
+                                                                    {carnet.jours_manques}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">Restantes</div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-base font-bold text-blue-600">
+                                                                   {Math.round(carnet.jours_coches / 31 * 100)}%
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">Complété</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Grille des mises (31 cases) */}
+                                                    <div className="grid grid-cols-7 gap-1 mb-3">
+                                                        {carnet.mises_cochees.map((estCoche: boolean, index: number) => {
+                                                            const numeroCase = index + 1;
+                                                            const estCommissionSfd = index === 0 && estCoche;
+                                                            const estProchainLibre = carnet.prochaineCaseACocher === numeroCase;
+
+                                                            return (
+                                                                <div
+                                                                    key={numeroCase}
+                                                                    className={`w-4 h-4 rounded text-[8px] font-medium flex items-center justify-center transition-all ${estCommissionSfd
+                                                                        ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
+                                                                        : estCoche
+                                                                            ? 'bg-gradient-to-br from-green-400 to-green-600 text-white'
+                                                                            : estProchainLibre
+                                                                                ? 'bg-blue-200 text-blue-800 border border-blue-400 scale-110'
+                                                                                : 'bg-gray-200 text-gray-600'
+                                                                        }`}
+                                                                >
+                                                                    {numeroCase}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Actions selon l'état du carnet */}
+                                                    {carnet.peutCotiser ? (
+                                                        <div className="flex gap-2">
+                                                            <GlassButton
+                                                                onClick={() => setIsContributionModalOpen(true)}
+                                                                disabled={loading}
+                                                                className="flex-1 text-xs py-1"
+                                                                size="sm"
+                                                            >
+                                                                <CreditCard className="h-3 w-3 mr-1" />
+                                                                Payer avec KKiaPay
+                                                            </GlassButton>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <div className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                                                                {carnet.carnet_complet
+                                                                    ? '✅ Carnet terminé'
+                                                                    : carnet.cycle_numero === participantDetails.carnets_cotisation.length
+                                                                        ? '📋 Carnet en cours'
+                                                                        : '🔒 Carnet fermé'}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </GlassCard>
+                                            ))}
+                                        </div>
                                     </div>
+
+                                    {/* Légende mise à jour */}
                                     <div className="mt-8 flex flex-wrap gap-6 justify-center">
                                         <div className="flex items-center gap-2">
                                             <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded"></div>
@@ -485,14 +398,17 @@ const TontineDetailsPage = () => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="w-4 h-4 bg-blue-200 border border-blue-400 rounded"></div>
-                                            <span className="text-sm text-gray-700 font-medium">Prochaine case à cocher</span>
+                                            <span className="text-sm text-gray-700 font-medium">Prochaine case à payer</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="w-4 h-4 bg-gray-200 rounded"></div>
                                             <span className="text-sm text-gray-700 font-medium">Non payé</span>
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4 text-blue-600" />
+                                            <span className="text-sm text-gray-700 font-medium">Paiement KKiaPay disponible</span>
+                                        </div>
                                     </div>
-
                                 </CardBody>
                             </Card>
                         </Tab>
@@ -502,27 +418,33 @@ const TontineDetailsPage = () => {
                                 <CardBody>
                                     <div className="space-y-6">
                                         <h3 className="text-lg font-semibold text-gray-900 mb-6">Historique des transactions</h3>
-                                        {carnetsReels.filter(c => !c.estCarnetFutur) && carnetsReels.filter(c => !c.estCarnetFutur).length > 0 ? (
+                                        {participantDetails?.carnets_cotisation?.length > 0 ? (
                                             <div className="space-y-3">
-                                                {/* Affichage des dernières cotisations basé sur les carnets réels */}
-                                                {carnetsReels.filter(c => !c.estCarnetFutur).slice(-5).reverse().map((carnet, index) => (
-                                                    <div key={carnet.id} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all">
+                                                {participantDetails?.carnets_cotisation?.map((carnet, index) => (
+                                                    <div key={carnet.cycle_numero} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all">
                                                         <div className="flex items-center gap-4">
                                                             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-100">
-                                                                <CheckCircle className="text-green-600" size={20} />
+                                                                {carnet.carnet_complet ? (
+                                                                    <CheckCircle className="text-green-600" size={20} />
+                                                                ) : (
+                                                                    <Clock className="text-orange-600" size={20} />
+                                                                )}
                                                             </div>
                                                             <div>
                                                                 <p className="font-medium text-gray-900">Carnet #{carnet.numero}</p>
                                                                 <p className="text-sm text-gray-500">
-                                                                    {carnet.misesPayees} mises payées • {format(carnet.dateDebut, 'dd MMM yyyy', { locale: fr })}
+                                                                    {carnet.jours_coches} mises payées • {format(new Date(carnet.cycle_debut), 'dd MMM yyyy', { locale: fr })}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-bold text-green-600">
-                                                                +{(carnet.misesPayees * parseFloat(participantDetails.montantMise)).toLocaleString()} FCFA
+                                                                +{(carnet.jours_coches * parseFloat(participantDetails.montantMise)).toLocaleString()} FCFA
                                                             </p>
-                                                            <div className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                            <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${carnet.carnet_complet
+                                                                ? 'bg-green-100 text-green-700'
+                                                                : 'bg-orange-100 text-orange-700'
+                                                                }`}>
                                                                 {carnet.pourcentageCompletion}% complété
                                                             </div>
                                                         </div>
@@ -532,10 +454,9 @@ const TontineDetailsPage = () => {
                                         ) : (
                                             <div className="text-center py-8">
                                                 <FileText className="mx-auto mb-4 text-gray-400" size={48} />
-                                                <p className="text-gray-600">Les transactions apparaîtront ici selon vos carnets de cotisation</p>
+                                                <p className="text-gray-600">Aucun carnet disponible</p>
                                             </div>
                                         )}
-
                                     </div>
                                 </CardBody>
                             </Card>
@@ -544,45 +465,40 @@ const TontineDetailsPage = () => {
                 </div>
             </div>
 
-            {/* Modal de cotisation avec nouveau système */}
-            {
-                isContributionModalOpen && (
-                    <ContributionForm
-                        isOpen={isContributionModalOpen}
-                        onClose={() => setIsContributionModalOpen(false)}
-                        participantDetails={participantDetails}
-                        carnetActif={carnetActif}
-                        carnetsDisponibles={carnetsDisponibles}
-                        loading={loading}
-                        onSubmit={effectuerCotisationAwa}
-                        cocherMises={cocherMises}
-                        genererNouveauCarnet={genererNouveauCarnet}
-                    />
-                )
-            }
+            {/* Modal de cotisation avec KKiaPay */}
+            {isContributionModalOpen && (
+                <ContributionForm
+                    isOpen={isContributionModalOpen}
+                    onClose={() => setIsContributionModalOpen(false)}
+                    participantDetails={participantDetails}
+                    loading={loading}
+                    onSubmit={handleCotisationSubmit}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={handlePaymentError}
+                />
+            )}
 
-            {
-                isWithdrawalModalOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-                            <button
-                                onClick={() => setIsWithdrawalModalOpen(false)}
-                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-                            >
-                                ✕
-                            </button>
-                            <WithdrawalForm
-                                isOpen={isWithdrawalModalOpen}
-                                onClose={() => setIsWithdrawalModalOpen(false)}
-                                participantDetails={participantDetails}
-                                loading={loading}
-                                
-                            />
-                        </div>
+            {/* Modal de retrait */}
+            {isWithdrawalModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+                        <button
+                            onClick={() => setIsWithdrawalModalOpen(false)}
+                            className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+                        >
+                            ✕
+                        </button>
+                        <WithdrawalForm
+                            isOpen={isWithdrawalModalOpen}
+                            onClose={() => setIsWithdrawalModalOpen(false)}
+                            details={participantDetails}
+                            loading={loading}
+                            onSubmit={effectuerRetrait}
+                        />
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 };
 

@@ -23,6 +23,7 @@ export interface Tontine {
 
 export interface MyTontine {
   id: string;
+  idParticipant: string;
   nom: string;
   sfd_nom: string;
   solde_client: string;

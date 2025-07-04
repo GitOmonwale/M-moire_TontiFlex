@@ -4,14 +4,14 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { 
-  FileText, 
-  Filter, 
-  Search, 
-  Eye, 
-  Edit, 
-  Clock, 
-  AlertTriangle, 
+import {
+  FileText,
+  Filter,
+  Search,
+  Eye,
+  Edit,
+  Clock,
+  AlertTriangle,
   CheckCircle,
   XCircle,
   User,
@@ -39,16 +39,16 @@ const LoanRequestsPage = () => {
     .filter(request => {
       const statusMatch = filterStatus === "tous" || request.status === filterStatus;
       const urgencyMatch = filterUrgency === "tous" || request.urgency === filterUrgency;
-      const searchMatch = searchTerm === "" || 
+      const searchMatch = searchTerm === "" ||
         request.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.clientProfession.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.id.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       return statusMatch && urgencyMatch && searchMatch;
     })
     .sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortBy) {
         case "date":
           comparison = new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime();
@@ -65,7 +65,7 @@ const LoanRequestsPage = () => {
         default:
           comparison = 0;
       }
-      
+
       return sortOrder === "desc" ? -comparison : comparison;
     });
 
@@ -142,7 +142,7 @@ const LoanRequestsPage = () => {
               <FileText className="text-emerald-600" size={24} />
             </div>
           </GlassCard>
-          
+
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -153,7 +153,7 @@ const LoanRequestsPage = () => {
               </div>
               <Clock className="text-orange-600" size={24} />
             </div>
-          </GlassCard>      
+          </GlassCard>
           <GlassCard className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -174,7 +174,7 @@ const LoanRequestsPage = () => {
               <Filter className="text-emerald-600" size={20} />
               <span className="text-emerald-600 font-medium">Filtres :</span>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               {/* Recherche */}
               <div className="relative flex-1 max-w-md">
@@ -245,7 +245,7 @@ const LoanRequestsPage = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Badges */}
                         <div className="flex gap-2">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap ${getScoreColor(request.reliabilityScore)}`}>
@@ -315,27 +315,27 @@ const LoanRequestsPage = () => {
                         {/* Actions */}
                         <div className="flex flex-col gap-2 w-full lg:w-auto">
                           <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}`}>
-                            <GlassButton 
-                              size="sm" 
+                            <GlassButton
+                              size="sm"
                               className="w-full lg:w-auto bg-emerald-600 hover:bg-emerald-700"
                             >
                               <Eye className="mr-1" size={14} />
                               Examiner
                             </GlassButton>
                           </Link>
-                          
+
                           {request.status === 'pending' && (
-  <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}?tab=decision&action=process`}>
-    <GlassButton 
-      variant="outline" 
-      size="sm"
-      className="w-full lg:w-auto border-emerald-300 text-emerald-600 hover:bg-emerald-50"
-    >
-      <Edit className="mr-1" size={14} />
-      Traiter
-    </GlassButton>
-  </Link>
-)}
+                            <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}?tab=decision&action=process`}>
+                              <GlassButton
+                                variant="outline"
+                                size="sm"
+                                className="w-full lg:w-auto border-emerald-300 text-emerald-600 hover:bg-emerald-50"
+                              >
+                                <Edit className="mr-1" size={14} />
+                                Traiter
+                              </GlassButton>
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -350,7 +350,7 @@ const LoanRequestsPage = () => {
               </div>
             )}
           </div>
-          
+
           {filteredRequests.length > 0 && (
             <div className="mt-6 text-sm text-gray-600 text-center">
               {filteredRequests.length} demande(s) trouvée(s) sur {mockLoanRequests.length} au total

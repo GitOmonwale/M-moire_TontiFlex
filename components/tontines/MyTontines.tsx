@@ -10,13 +10,18 @@ import { MyTontine } from '@/types/tontines'
 const MyTontines = () => {
     const { fetchMyTontines } = useTontines()
     const [myTontines, setMyTontines] = useState<MyTontine[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     useEffect(() => {
         const loadMyTontines = async () => {
+            setIsLoading(true);
             try {
                 const myTontines = await fetchMyTontines();
                 setMyTontines(myTontines);
+                console.log('Tontines chargées avec succès', myTontines);
             } catch (error) {
                 console.error('Erreur lors du chargement:', error);
+            } finally {
+                setIsLoading(false);
             }
         };
         loadMyTontines();
@@ -35,8 +40,17 @@ const MyTontines = () => {
                 </Link>
             </div>
 
-            <div className="grid gap-4">
-                {myTontines.map((tontine) => (
+            {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+                </div>
+            ) : myTontines.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                    Aucune tontine trouvée
+                </div>
+            ) : (
+                <div className="grid gap-4">
+                    {myTontines.map((tontine) => (
                     <div key={tontine.id} className="bg-gradient-to-r from-white to-emerald-50 rounded-xl p-4 border border-emerald-100 hover:shadow-md transition-all duration-300">
                         <div className="flex justify-between items-start mb-3">
                             <div className="flex-1">
@@ -52,7 +66,7 @@ const MyTontines = () => {
                                     </div>
                                 </div>
                             </div>
-                            <Link href={`/dashboards/dashboard-client/my-tontines/${tontine.id}`}>
+                            <Link href={`/dashboards/dashboard-client/my-tontines/${tontine.idParticipant}`}>
                                 <GlassButton variant="outline" size="sm">
                                     <Eye className="mr-1" size={14} />
                                     Détails
@@ -78,8 +92,9 @@ const MyTontines = () => {
                             </div>
                         </div>
                     </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

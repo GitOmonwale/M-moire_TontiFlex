@@ -8,13 +8,13 @@ import { toast } from "sonner";
 import { PiggyBank, Upload, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const router = useRouter();
-const SavingsAccountForm = () => {
 
+const SavingsAccountForm = () => {
+  const router = useRouter();
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success("Compte d'épargne créé avec succès !");
-    setTimeout(() => router.push("/dashboards/dashboard-client/savings"), 1500);
+    setTimeout(() => router.push("/dashboards/dashboard-client/saving-accounts"), 1500);
   };
 
   return (
