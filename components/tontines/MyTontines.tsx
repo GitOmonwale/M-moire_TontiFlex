@@ -1,11 +1,26 @@
+'use client'
+import { useEffect, useState } from 'react'
 import { GlassButton } from '@/components/GlassButton'
 import { GlassCard } from '@/components/GlassCard'
 import Link from 'next/link'
 import { Building, Calendar, Eye, Plus, Users } from 'lucide-react'
 import React from 'react'
-import { mockTontines } from '@/data/mockData'
-
+import { useTontines } from '@/hooks/useTontines'
+import { MyTontine } from '@/types/tontines'
 const MyTontines = () => {
+    const { fetchMyTontines } = useTontines()
+    const [myTontines, setMyTontines] = useState<MyTontine[]>([]);
+    useEffect(() => {
+        const loadMyTontines = async () => {
+            try {
+                const myTontines = await fetchMyTontines();
+                setMyTontines(myTontines);
+            } catch (error) {
+                console.error('Erreur lors du chargement:', error);
+            }
+        };
+        loadMyTontines();
+    }, []);
     return (
         <div className="">
             <div className="flex items-center justify-between mb-6">
@@ -21,15 +36,15 @@ const MyTontines = () => {
             </div>
 
             <div className="grid gap-4">
-                {mockTontines.map((tontine) => (
+                {myTontines.map((tontine) => (
                     <div key={tontine.id} className="bg-gradient-to-r from-white to-emerald-50 rounded-xl p-4 border border-emerald-100 hover:shadow-md transition-all duration-300">
                         <div className="flex justify-between items-start mb-3">
                             <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900 mb-1">{tontine.name}</h3>
+                                <h3 className="font-semibold text-gray-900 mb-1">{tontine.nom}</h3>
                                 <div className="flex items-center gap-4 text-sm text-gray-600">
                                     <div className="flex items-center">
                                         <Building className="mr-1" size={14} />
-                                        {tontine.sfd}
+                                        {tontine.sfd_nom}
                                     </div>
                                     <div className="flex items-center">
                                         <Calendar className="mr-1" size={14} />
@@ -48,7 +63,7 @@ const MyTontines = () => {
                         <div className="grid grid-cols-3 gap-4">
                             <div className="text-center p-3 bg-white/60 rounded-lg">
                                 <p className="text-xs text-gray-600 mb-1">Solde actuel</p>
-                                <p className="font-bold text-emerald-600">{tontine.balance.toLocaleString()}</p>
+                                <p className="font-bold text-emerald-600">{tontine.solde_client.toLocaleString()}</p>
                                 <p className="text-xs text-gray-500">FCFA</p>
                             </div>
                             <div className="text-center p-3 bg-white/60 rounded-lg">

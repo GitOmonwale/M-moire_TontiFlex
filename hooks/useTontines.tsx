@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { Tontine, TontineParticipant, CreateTontineData, UpdateTontineData } from '../types/tontines';
+import { Tontine, TontineParticipant, CreateTontineData, UpdateTontineData, MyTontine } from '../types/tontines';
 
 interface PaginatedResponse<T> {
   count: number;
@@ -17,7 +17,7 @@ interface useTontinesResults {
   fetchTontines: () => Promise<void>;
   fetchTontineById: (id: string) => Promise<Tontine | null>;
   fetchAvailableTontines: () => Promise<Tontine[]>;
-  fetchMyTontines: () => Promise<Tontine[]>;
+  fetchMyTontines: () => Promise<MyTontine[]>;
   fetchTontineParticipants: (id: string) => Promise<TontineParticipant[]>;
   createTontine: (tontine: CreateTontineData | FormData) => Promise<Tontine>;
   updateTontine: (id: string, tontine: UpdateTontineData | FormData) => Promise<Tontine>;
@@ -113,7 +113,7 @@ export function useTontines(): useTontinesResults {
     }
   };
 
-  const fetchMyTontines = async (): Promise<Tontine[]> => {
+  const fetchMyTontines = async (): Promise<MyTontine[]> => {
     try {
       setLoading(true);
       const response = await fetch(`${baseUrl}/tontines/my-tontines/`, {
@@ -124,7 +124,7 @@ export function useTontines(): useTontinesResults {
         throw new Error('Erreur lors du chargement de mes tontines');
       }
       
-      const data: PaginatedResponse<Tontine> = await response.json();
+      const data: PaginatedResponse<MyTontine> = await response.json();
       return data.results || [];
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';

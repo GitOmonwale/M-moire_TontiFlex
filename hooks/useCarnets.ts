@@ -1,454 +1,362 @@
-// src/hooks/useCarnets.ts
 import { useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import {
-  CarnetCotisation,
-  CarnetCreateData,
-  CarnetUpdateData,
-  CarnetFilters,
-  PaginatedCarnetResponse,
-  CalendrierCarnet,
-  JourCotisation,
-  CarnetStatistiques,
-  MisesCochees
-} from '@/types/carnets';
-import { ApiError } from '@/types/tontines';
+import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
-interface UseCarnetsState {
-  carnets: CarnetCotisation[];
-  selectedCarnet: CarnetCotisation | null;
-  calendrier: CalendrierCarnet | null;
-  loading: boolean;
-  error: string | null;
-  pagination: {
-    count: number;
-    next: string | null;
-    previous: string | null;
-    currentPage: number;
-  };
+// Types TypeScript basés sur l'API
+export interface CarnetCotisation {
+  id: number;
+  client_nom: string;
+  tontine_nom: string;
+  mises_completees: number;
+  cycle_debut: string; // Date format YYYY-MM-DD
+  mises_cochees: boolean[]; // Array de 31 booleans (jour 1 à 31)
+  date_creation: string;
+  date_modification: string;
+  client: string; // UUID
+  tontine: string; // UUID
 }
 
-export const useCarnets = () => {
+export interface CreateCarnetCotisationData {
+  cycle_debut: string; // Date format YYYY-MM-DD
+  mises_cochees: boolean[] | string; // Array de 31 booleans ou string
+  client: string; // UUID
+  tontine: string; // UUID
+}
+
+export interface UpdateCarnetCotisationData {
+  cycle_debut?: string;
+  mises_cochees?: boolean[] | string;
+  client?: string;
+  tontine?: string;
+}
+
+export interface CarnetEtat {
+  carnet_actuel: CarnetCotisation;
+  cycle_numero: number;
+  jours_cotises: number;
+  jours_manques: number;
+  progression_pourcentage: number;
+  prochains_jours: number[];
+  historique_cycles: CarnetCotisation[];
+  date_prochain_cycle: string;
+}
+
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+interface useCarnetsCotisationResults {
+  carnets: CarnetCotisation[];
+  carnetEtat: CarnetEtat | null;
+  loading: boolean;
+  error: string | null;
+
+  // CRUD des carnets
+  fetchCarnets: () => Promise<void>;
+  fetchCarnetById: (id: number) => Promise<CarnetCotisation | null>;
+  createCarnet: (carnetData: CreateCarnetCotisationData | FormData) => Promise<CarnetCotisation>;
+  updateCarnet: (id: number, carnetData: UpdateCarnetCotisationData | FormData) => Promise<CarnetCotisation>;
+  deleteCarnet: (id: number) => Promise<boolean>;
+
+  // Consultation de l'état du carnet
+  fetchCarnetEtat: (id: number) => Promise<CarnetEtat | null>;
+
+  // Fonctions utilitaires
+  calculerStatistiquesCarnet: (carnet: CarnetCotisation) => {
+    joursPayes: number;
+    joursRestants: number;
+    pourcentageCompletion: number;
+    premierJourLibre: number | null;
+  };
+  
+  genererNouveauCarnet: (clientId: string, tontineId: string, dateDebut?: string) => CreateCarnetCotisationData;
+  cocherMises: (carnet: CarnetCotisation, nombreMises: number) => boolean[];
+}
+
+export function useCarnetsCotisation(): useCarnetsCotisationResults {
+  const [carnets, setCarnets] = useState<CarnetCotisation[]>([]);
+  const [carnetEtat, setCarnetEtat] = useState<CarnetEtat | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { accessToken } = useAuth();
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://gep-api-fn92.onrender.com';
+  const baseUrl = 'https://gep-api-fn92.onrender.com/api';
 
-  const [state, setState] = useState<UseCarnetsState>({
-    carnets: [],
-    selectedCarnet: null,
-    calendrier: null,
-    loading: false,
-    error: null,
-    pagination: {
-      count: 0,
-      next: null,
-      previous: null,
-      currentPage: 1
-    }
-  });
-
-  // Helper function pour les headers d'authentification
-  const getAuthHeaders = () => ({
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  });
-
-  // Helper function pour gérer les erreurs
-  const handleError = (error: any): ApiError => {
-    console.error('API Error:', error);
+  const getAuthHeaders = (isFormData = false) => {
+    const headers: HeadersInit = {
+      ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+    };
     
-    if (error.response) {
-      return {
-        message: error.response.data?.detail || error.response.data?.message || 'Erreur serveur',
-        details: error.response.data,
-        status: error.response.status
-      };
-    } else if (error.request) {
-      return {
-        message: 'Erreur de réseau. Vérifiez votre connexion.',
-        details: error.request
-      };
-    } else {
-      return {
-        message: error.message || 'Une erreur inattendue est survenue',
-        details: error
-      };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
     }
+    
+    return headers;
   };
 
-  // Helper function pour faire des requêtes authentifiées
-  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...getAuthHeaders(),
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || `HTTP ${response.status}`);
+  // Récupérer la liste des carnets de cotisation
+  const fetchCarnets = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/carnets-cotisation/`, {
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des carnets de cotisation');
+      }
+      
+      const data: PaginatedResponse<CarnetCotisation> = await response.json();
+      setCarnets(data.results || []);
+      console.log("carnets de cotisation", data.results);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error('Erreur lors du chargement des carnets de cotisation');
+      throw err;
+    } finally {
+      setLoading(false);
     }
+  }, [accessToken]);
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
+  // Récupérer un carnet par ID
+  const fetchCarnetById = async (id: number): Promise<CarnetCotisation | null> => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/carnets-cotisation/${id}/`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement du carnet de cotisation');
+      }
+      
       return await response.json();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement du carnet de cotisation');
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    return null;
   };
 
-  // 1. GET /api/api/tontines/carnets-cotisation/ - Liste des carnets
-  const getCarnets = useCallback(async (filters: CarnetFilters = {}) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
+  // Créer un carnet de cotisation
+  const createCarnet = async (carnetData: CreateCarnetCotisationData | FormData) => {
+    setLoading(true);
+    setError(null);
     try {
-      const params = new URLSearchParams();
-      if (filters.page) params.append('page', filters.page.toString());
-      if (filters.client) params.append('client', filters.client);
-      if (filters.tontine) params.append('tontine', filters.tontine);
-      if (filters.cycle_debut) params.append('cycle_debut', filters.cycle_debut);
-
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/?${params.toString()}`;
-      const data: PaginatedCarnetResponse = await authenticatedFetch(url);
-
-      setState(prev => ({
-        ...prev,
-        carnets: data.results,
-        loading: false,
-        pagination: {
-          count: data.count,
-          next: data.next,
-          previous: data.previous,
-          currentPage: filters.page || 1
-        }
-      }));
-
-      return data;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
-    }
-  }, [accessToken, BASE_URL]);
-
-  // 2. POST /api/api/tontines/carnets-cotisation/ - Créer un carnet
-  const createCarnet = useCallback(async (data: CarnetCreateData) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/`;
-      const newCarnet: CarnetCotisation = await authenticatedFetch(url, {
+      const isFormData = carnetData instanceof FormData;
+      
+      // Si ce n'est pas FormData, s'assurer que mises_cochees est au bon format
+      let processedData = carnetData;
+      if (!isFormData && typeof carnetData === 'object') {
+        processedData = {
+          ...carnetData,
+          mises_cochees: Array.isArray(carnetData.mises_cochees) 
+            ? carnetData.mises_cochees 
+            : Array(31).fill(false) // Carnet vide par défaut
+        };
+      }
+      
+      const response = await fetch(`${baseUrl}/carnets-cotisation/`, {
         method: 'POST',
-        body: JSON.stringify(data),
+        headers: getAuthHeaders(isFormData),
+        body: isFormData ? carnetData : JSON.stringify(processedData),
       });
 
-      setState(prev => ({
-        ...prev,
-        carnets: [newCarnet, ...prev.carnets],
-        loading: false
-      }));
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors de la création du carnet de cotisation';
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (typeof errorData === 'object') {
+            const validationErrors = Object.entries(errorData)
+              .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+              .join('\n');
+            if (validationErrors) {
+              errorMessage = `Erreurs de validation :\n${validationErrors}`;
+            }
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+        }
+        throw new Error(errorMessage);
+      }
 
+      const newCarnet = await response.json();
+      setCarnets(prev => [newCarnet, ...prev]);
+      toast.success('Carnet de cotisation créé avec succès');
       return newCarnet;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [accessToken, BASE_URL]);
+  };
 
-  // 3. GET /api/api/tontines/carnets-cotisation/{id}/ - Détails d'un carnet
-  const getCarnetById = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
+  // Mettre à jour un carnet de cotisation
+  const updateCarnet = async (id: number, carnetData: UpdateCarnetCotisationData | FormData) => {
+    setLoading(true);
+    setError(null);
     try {
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/${id}/`;
-      const carnet: CarnetCotisation = await authenticatedFetch(url);
-
-      setState(prev => ({
-        ...prev,
-        selectedCarnet: carnet,
-        loading: false
-      }));
-
-      return carnet;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
-    }
-  }, [accessToken, BASE_URL]);
-
-  // 4. PUT /api/api/tontines/carnets-cotisation/{id}/ - Modifier un carnet
-  const updateCarnet = useCallback(async (id: number, data: CarnetUpdateData) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/${id}/`;
-      const updatedCarnet: CarnetCotisation = await authenticatedFetch(url, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-
-      setState(prev => ({
-        ...prev,
-        carnets: prev.carnets.map(c => c.id === id ? updatedCarnet : c),
-        selectedCarnet: prev.selectedCarnet?.id === id ? updatedCarnet : prev.selectedCarnet,
-        loading: false
-      }));
-
-      return updatedCarnet;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
-    }
-  }, [accessToken, BASE_URL]);
-
-  // 5. PATCH /api/api/tontines/carnets-cotisation/{id}/ - Modification partielle
-  const partialUpdateCarnet = useCallback(async (id: number, data: Partial<CarnetUpdateData>) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    try {
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/${id}/`;
-      const updatedCarnet: CarnetCotisation = await authenticatedFetch(url, {
+      const isFormData = carnetData instanceof FormData;
+      
+      const response = await fetch(`${baseUrl}/carnets-cotisation/${id}/`, {
         method: 'PATCH',
-        body: JSON.stringify(data),
+        headers: getAuthHeaders(isFormData),
+        body: isFormData ? carnetData : JSON.stringify(carnetData),
       });
 
-      setState(prev => ({
-        ...prev,
-        carnets: prev.carnets.map(c => c.id === id ? updatedCarnet : c),
-        selectedCarnet: prev.selectedCarnet?.id === id ? updatedCarnet : prev.selectedCarnet,
-        loading: false
-      }));
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour du carnet de cotisation');
+      }
 
+      const updatedCarnet = await response.json();
+      setCarnets(prev => 
+        prev.map(carnet => carnet.id === id ? { ...carnet, ...updatedCarnet } : carnet)
+      );
+      toast.success('Carnet de cotisation mis à jour avec succès');
       return updatedCarnet;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [accessToken, BASE_URL]);
+  };
 
-  // 6. DELETE /api/api/tontines/carnets-cotisation/{id}/ - Supprimer un carnet
-  const deleteCarnet = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
+  // Supprimer un carnet de cotisation
+  const deleteCarnet = async (id: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      const url = `${BASE_URL}/api/api/tontines/carnets-cotisation/${id}/`;
-      await authenticatedFetch(url, {
+      const response = await fetch(`${baseUrl}/carnets-cotisation/${id}/`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
 
-      setState(prev => ({
-        ...prev,
-        carnets: prev.carnets.filter(c => c.id !== id),
-        selectedCarnet: prev.selectedCarnet?.id === id ? null : prev.selectedCarnet,
-        loading: false
-      }));
+      if (!response.ok && response.status !== 204) {
+        throw new Error('Erreur lors de la suppression du carnet de cotisation');
+      }
 
+      setCarnets(prev => prev.filter(carnet => carnet.id !== id));
+      toast.success('Carnet de cotisation supprimé avec succès');
       return true;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [accessToken, BASE_URL]);
+  };
 
-  // Utilitaire: Marquer/démarquer une cotisation pour un jour
-  const toggleCotisation = useCallback(async (carnetId: number, jour: number, payer: boolean) => {
-    const carnet = state.carnets.find(c => c.id === carnetId) || state.selectedCarnet;
-    if (!carnet) throw new Error('Carnet non trouvé');
-
-    const nouvelleMisesCochees: MisesCochees = { ...carnet.mises_cochees };
-    nouvelleMisesCochees[`jour_${jour}`] = payer;
-
-    return await partialUpdateCarnet(carnetId, {
-      mises_cochees: nouvelleMisesCochees
-    });
-  }, [state.carnets, state.selectedCarnet, partialUpdateCarnet]);
-
-  // Utilitaire: Calculer le calendrier d'un carnet
-  const generateCalendrierCarnet = useCallback((carnet: CarnetCotisation): CalendrierCarnet => {
-    const cycleDebut = new Date(carnet.cycle_debut);
-    const jours: JourCotisation[] = [];
-    
-    let joursPayes = 0;
-    let joursManques = 0;
-
-    for (let i = 1; i <= 31; i++) {
-      const dateJour = new Date(cycleDebut);
-      dateJour.setDate(cycleDebut.getDate() + i - 1);
-      
-      const estPaye = carnet.mises_cochees?.[`jour_${i}`] || false;
-      const estCommissionSfd = i === 1;
-      const estEnRetard = !estPaye && dateJour < new Date();
-
-      if (estPaye) joursPayes++;
-      else if (dateJour < new Date()) joursManques++;
-
-      jours.push({
-        numero: i,
-        date: dateJour.toISOString().split('T')[0],
-        est_paye: estPaye,
-        est_commission_sfd: estCommissionSfd,
-        est_en_retard: estEnRetard
-      });
-    }
-
-    const dateFin = new Date(cycleDebut);
-    dateFin.setDate(cycleDebut.getDate() + 30);
-
-    const statistiques: CarnetStatistiques = {
-      jours_payes: joursPayes,
-      jours_manques: joursManques,
-      taux_ponctualite: (joursPayes / 31) * 100,
-      jours_retard: joursManques,
-      montant_total_verse: joursPayes * 1500, // À adapter selon le montant réel
-      prochaine_echeance: jours.find(j => !j.est_paye && new Date(j.date) >= new Date())?.date || null,
-      commission_sfd_payee: jours[0]?.est_paye || false
-    };
-
-    return {
-      carnet,
-      jours,
-      statistiques,
-      cycle_actuel: Math.floor((Date.now() - cycleDebut.getTime()) / (31 * 24 * 60 * 60 * 1000)) + 1,
-      date_fin_cycle: dateFin.toISOString().split('T')[0]
-    };
-  }, []);
-
-  // Utilitaire: Obtenir le calendrier d'un carnet spécifique
-  const getCalendrierCarnet = useCallback(async (carnetId: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
+  // Consulter l'état du carnet de cotisation
+  const fetchCarnetEtat = async (id: number): Promise<CarnetEtat | null> => {
     try {
-      const carnet = await getCarnetById(carnetId);
-      const calendrier = generateCalendrierCarnet(carnet);
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/carnets-cotisation/${id}/carnet-cotisation/`, {
+        headers: getAuthHeaders(),
+      });
       
-      setState(prev => ({
-        ...prev,
-        calendrier,
-        loading: false
-      }));
-
-      return calendrier;
-    } catch (error) {
-      const apiError = handleError(error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: apiError.message 
-      }));
-      throw apiError;
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Accès refusé au carnet de cotisation');
+        } else if (response.status === 404) {
+          throw new Error('Participant introuvable');
+        }
+        throw new Error('Erreur lors du chargement de l\'état du carnet');
+      }
+      
+      const etatData = await response.json();
+      setCarnetEtat(etatData);
+      return etatData;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement de l\'état du carnet');
+      return null;
+    } finally {
+      setLoading(false);
     }
-  }, [getCarnetById, generateCalendrierCarnet]);
+  };
 
-  // Utilitaire: Obtenir les carnets d'une tontine spécifique
-  const getCarnetsByTontine = useCallback(async (tontineId: string) => {
-    return await getCarnets({ tontine: tontineId });
-  }, [getCarnets]);
+  // Fonctions utilitaires
 
-  // Utilitaire: Obtenir les carnets d'un client spécifique
-  const getCarnetsByClient = useCallback(async (clientId: string) => {
-    return await getCarnets({ client: clientId });
-  }, [getCarnets]);
-
-  // Utilitaire: Créer un nouveau carnet pour une tontine
-  const initializerCarnet = useCallback(async (clientId: string, tontineId: string) => {
-    const today = new Date();
-    const cycleDebut = today.toISOString().split('T')[0];
+  // Calculer les statistiques d'un carnet
+  const calculerStatistiquesCarnet = (carnet: CarnetCotisation) => {
+    const joursPayes = carnet.mises_cochees.filter(Boolean).length;
+    const joursRestants = 31 - joursPayes;
+    const pourcentageCompletion = Math.round((joursPayes / 31) * 100);
     
-    // Initialiser les mises cochées (toutes à false)
-    const misesInitiales: MisesCochees = {};
-    for (let i = 1; i <= 31; i++) {
-      misesInitiales[`jour_${i}`] = false;
-    }
+    // Trouver le premier jour libre (première case false)
+    const premierJourLibre = carnet.mises_cochees.findIndex(mise => !mise);
+    
+    return {
+      joursPayes,
+      joursRestants,
+      pourcentageCompletion,
+      premierJourLibre: premierJourLibre === -1 ? null : premierJourLibre + 1 // +1 car les jours commencent à 1
+    };
+  };
 
-    return await createCarnet({
+  // Générer un nouveau carnet vide
+  const genererNouveauCarnet = (
+    clientId: string, 
+    tontineId: string, 
+    dateDebut?: string
+  ): CreateCarnetCotisationData => {
+    const today = new Date();
+    const cycleDebut = dateDebut || today.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    
+    return {
       cycle_debut: cycleDebut,
-      mises_cochees: misesInitiales,
+      mises_cochees: Array(31).fill(false), // 31 jours, tous à false au départ
       client: clientId,
       tontine: tontineId
-    });
-  }, [createCarnet]);
+    };
+  };
 
-  // Fonction utilitaire pour nettoyer les erreurs
-  const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
-  }, []);
-
-  // Fonction utilitaire pour nettoyer les données
-  const clearData = useCallback(() => {
-    setState({
-      carnets: [],
-      selectedCarnet: null,
-      calendrier: null,
-      loading: false,
-      error: null,
-      pagination: {
-        count: 0,
-        next: null,
-        previous: null,
-        currentPage: 1
+  // Cocher des mises dans un carnet (pour simulation)
+  const cocherMises = (carnet: CarnetCotisation, nombreMises: number): boolean[] => {
+    const nouvellesMises = [...carnet.mises_cochees];
+    let misesRestantes = nombreMises;
+    
+    // Cocher chronologiquement les premières cases disponibles
+    for (let i = 0; i < 31 && misesRestantes > 0; i++) {
+      if (!nouvellesMises[i]) {
+        nouvellesMises[i] = true;
+        misesRestantes--;
       }
-    });
-  }, []);
+    }
+    
+    return nouvellesMises;
+  };
 
   return {
-    // État
-    ...state,
-    
-    // Actions CRUD
-    getCarnets,
+    carnets,
+    carnetEtat,
+    loading,
+    error,
+    fetchCarnets,
+    fetchCarnetById,
     createCarnet,
-    getCarnetById,
     updateCarnet,
-    partialUpdateCarnet,
     deleteCarnet,
-    
-    // Actions spécialisées
-    toggleCotisation,
-    getCalendrierCarnet,
-    getCarnetsByTontine,
-    getCarnetsByClient,
-    initializerCarnet,
-    generateCalendrierCarnet,
-    
-    // Utilitaires
-    clearError,
-    clearData,
-    
-    // État dérivé
-    isLoading: state.loading,
-    hasError: !!state.error,
-    isEmpty: state.carnets.length === 0 && !state.loading,
-    totalPages: Math.ceil(state.pagination.count / 10),
+    fetchCarnetEtat,
+    calculerStatistiquesCarnet,
+    genererNouveauCarnet,
+    cocherMises,
   };
-};
+}
