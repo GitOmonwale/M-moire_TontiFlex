@@ -477,7 +477,7 @@ const CreateSFD: React.FC = () => {
     </div>
   );
 
-  const renderStep = (): JSX.Element | null => {
+  const renderStep = (): React.ReactElement | null => {
     switch(currentStep) {
       case 1:
         return (
