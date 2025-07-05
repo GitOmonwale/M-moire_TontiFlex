@@ -23,7 +23,7 @@ export const chillax = localFont({
       style: 'normal',
     },
     {
-      path: '../public/fonts/Chillax-SemiBold.woff2',
+      path: '../public/fonts/Chillax-Semibold.woff2',
       weight: '600',
       style: 'normal',
     },
