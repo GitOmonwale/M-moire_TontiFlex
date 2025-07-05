@@ -30,7 +30,7 @@ const QuicksActions = () => {
                         className="w-full justify-start"
                     >
                         <PiggyBank className="mr-2" size={16} />
-                        Ouvrir un compte épargne
+                        Ouvrir un compte courant
                     </GlassButton>
                 </div>
             </GlassCard>

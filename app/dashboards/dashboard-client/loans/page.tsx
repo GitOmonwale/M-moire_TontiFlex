@@ -1,9 +1,8 @@
 'use client'
-import { useState } from "react";
+import { JSX, useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassButton } from "@/components/GlassButton";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   CreditCard,
@@ -36,137 +35,134 @@ import { cn } from "@/lib/utils";
 import router from "next/router";
 import Link from "next/link";
 
-const MyLoans = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedSfd, setSelectedSfd] = useState("all");
+// Types et interfaces
+type LoanStatus = 'Actif' | 'En cours' | 'En attente' | 'Remboursé' | 'Suspendu';
 
-  // Données statiques des prêts organisées par SFD - Un seul prêt actif par SFD
-  const loansBySfd = {
-    "SFD Porto-Novo": [
-      {
-        id: "PRT001234567",
-        amount: 500000,
-        purpose: "Développement activité commerciale",
-        status: "Actif",
-        startDate: "2024-01-15",
-        endDate: "2025-01-15",
-        monthlyPayment: 45000,
-        remainingAmount: 300000,
-        paidAmount: 200000,
-        interestRate: 8.5,
-        nextPaymentDate: "2025-06-15"
-      },
-      {
-        id: "PRT001234570",
-        amount: 300000,
-        purpose: "Extension local commercial",
-        status: "Remboursé",
-        startDate: "2023-01-01",
-        endDate: "2024-01-01",
-        monthlyPayment: 0,
-        remainingAmount: 0,
-        paidAmount: 300000,
-        interestRate: 9.0,
-        nextPaymentDate: null
-      }
-    ],
-    "SFD Cotonou": [
-      {
-        id: "PRT001234568",
-        amount: 200000,
-        purpose: "Achat équipement agricole",
-        status: "En attente",
-        startDate: null,
-        endDate: null,
-        monthlyPayment: 0,
-        remainingAmount: 200000,
-        paidAmount: 0,
-        interestRate: 7.5,
-        nextPaymentDate: null
-      },
-      {
-        id: "PRT001234571",
-        amount: 150000,
-        purpose: "Fonds de roulement",
-        status: "Remboursé",
-        startDate: "2023-06-01",
-        endDate: "2024-06-01",
-        monthlyPayment: 0,
-        remainingAmount: 0,
-        paidAmount: 150000,
-        interestRate: 8.0,
-        nextPaymentDate: null
-      }
-    ],
-    "SFD Abomey": [
-      {
-        id: "PRT001234569",
-        amount: 100000,
-        purpose: "Matériel agricole",
-        status: "Remboursé",
-        startDate: "2023-01-01",
-        endDate: "2024-01-01",
-        monthlyPayment: 0,
-        remainingAmount: 0,
-        paidAmount: 100000,
-        interestRate: 6.0,
-        nextPaymentDate: null
-      }
-    ]
-  };
+interface Loan {
+  id: string;
+  sfd: string;
+  amount: number;
+  purpose: string;
+  status: LoanStatus;
+  startDate: string | null;
+  endDate: string | null;
+  monthlyPayment: number;
+  remainingAmount: number;
+  paidAmount: number;
+  interestRate: number;
+  nextPaymentDate: string | null;
+}
 
-  // Aplatir les prêts pour les statistiques
-  const allLoans = Object.values(loansBySfd).flat();
 
-  // Statistiques globales
-  const totalLoaned = allLoans.reduce((sum, loan) => sum + loan.amount, 0);
-  const totalRemaining = allLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0);
-  const totalPaid = allLoans.reduce((sum, loan) => sum + loan.paidAmount, 0);
-  const activeLoans = allLoans.filter(loan => loan.status === "Actif" || loan.status === "En cours").length;
-  const completedLoans = allLoans.filter(loan => loan.status === "Remboursé").length;
-  const averageRate = allLoans.reduce((sum, loan) => sum + loan.interestRate, 0) / allLoans.length;
+const MyLoans: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedSfd, setSelectedSfd] = useState<string>("all");
 
-  // Liste des SFD
-  const sfdList = Object.keys(loansBySfd);
+  // Données statiques des prêts
+  const allLoans: Loan[] = [
+    {
+      id: "PRT001234567",
+      sfd: "SFD Porto-Novo",
+      amount: 500000,
+      purpose: "Développement activité commerciale",
+      status: "Actif",
+      startDate: "2024-01-15",
+      endDate: "2025-01-15",
+      monthlyPayment: 45000,
+      remainingAmount: 300000,
+      paidAmount: 200000,
+      interestRate: 8.5,
+      nextPaymentDate: "2025-06-15"
+    },
+    {
+      id: "PRT001234570",
+      sfd: "SFD Cotonou",
+      amount: 300000,
+      purpose: "Extension local commercial",
+      status: "Remboursé",
+      startDate: "2023-01-01",
+      endDate: "2024-01-01",
+      monthlyPayment: 0,
+      remainingAmount: 0,
+      paidAmount: 300000,
+      interestRate: 9.0,
+      nextPaymentDate: null
+    },
+    {
+      id: "PRT001234568",
+      sfd: "SFD Abomey",
+      amount: 200000,
+      purpose: "Achat équipement agricole",
+      status: "En attente",
+      startDate: null,
+      endDate: null,
+      monthlyPayment: 0,
+      remainingAmount: 200000,
+      paidAmount: 0,
+      interestRate: 7.5,
+      nextPaymentDate: null
+    },
+    {
+      id: "PRT001234571",
+      sfd: "SFD Cotonou",
+      amount: 150000,
+      purpose: "Fonds de roulement",
+      status: "Remboursé",
+      startDate: "2023-06-01",
+      endDate: "2024-06-01",
+      monthlyPayment: 0,
+      remainingAmount: 0,
+      paidAmount: 150000,
+      interestRate: 8.0,
+      nextPaymentDate: null
+    }
+  ];
+
+  // // Statistiques globales
+  // const loanStats: LoanStats = {
+  //   totalLoaned: allLoans.reduce((sum, loan) => sum + loan.amount, 0),
+  //   totalRemaining: allLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0),
+  //   totalPaid: allLoans.reduce((sum, loan) => sum + loan.paidAmount, 0),
+  //   activeLoans: allLoans.filter(loan => loan.status === "Actif" || loan.status === "En cours").length,
+  //   completedLoans: allLoans.filter(loan => loan.status === "Remboursé").length,
+  //   averageRate: allLoans.length > 0 ? allLoans.reduce((sum, loan) => sum + loan.interestRate, 0) / allLoans.length : 0
+  // };
+
+  // Liste unique des SFD
+  const sfdList: string[] = Array.from(new Set(allLoans.map(loan => loan.sfd)));
 
   // Filtrage des prêts
-  const getFilteredLoans = () => {
-    let filteredBySfd = selectedSfd === "all" ? loansBySfd : { [selectedSfd]: loansBySfd[selectedSfd] || [] };
-
-    const result: typeof loansBySfd = {};
-
-    Object.entries(filteredBySfd).forEach(([sfd, loans]) => {
-      const filteredLoans = loans.filter(loan => {
-        const matchesSearch = loan.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          loan.id.includes(searchTerm);
-        const matchesFilter = filterStatus === "all" || loan.status.toLowerCase() === filterStatus.toLowerCase();
-        return matchesSearch && matchesFilter;
-      });
-
-      if (filteredLoans.length > 0) {
-        result[sfd] = filteredLoans;
-      }
+  const getFilteredLoans = (): Loan[] => {
+    return allLoans.filter(loan => {
+      const matchesSearch = loan.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        loan.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        loan.sfd.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesFilter = filterStatus === "all" || 
+        loan.status.toLowerCase() === filterStatus.toLowerCase();
+      
+      const matchesSfd = selectedSfd === "all" || loan.sfd === selectedSfd;
+      
+      return matchesSearch && matchesFilter && matchesSfd;
     });
-
-    return result;
   };
 
-  const filteredLoansBySfd = getFilteredLoans();
+  const filteredLoans: Loan[] = getFilteredLoans();
 
-  const handleNewLoan = () => {
-    router.push(`/dashboards/dashboard-client/loans/new/${tontineId}`);
+  const handleNewLoan = (): void => {
+    router.push('/dashboards/dashboard-client/loans/new');
   };
 
-  const handleViewLoan = (loanId: string) => {
+  const handleViewLoan = (loanId: string): void => {
     router.push(`/dashboards/dashboard-client/loans/${loanId}`);
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return amount.toLocaleString('fr-FR') + ' FCFA';
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: LoanStatus): JSX.Element => {
     switch (status) {
       case "Actif":
       case "En cours":
@@ -182,7 +178,7 @@ const MyLoans = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: LoanStatus): string => {
     switch (status) {
       case "Actif":
       case "En cours":
@@ -199,9 +195,30 @@ const MyLoans = () => {
   };
 
   // Fonction pour vérifier si une SFD peut accorder un nouveau prêt
-  const canRequestNewLoan = (sfdName: string) => {
-    const sfdLoans = loansBySfd[sfdName as keyof typeof loansBySfd] || [];
+  const canRequestNewLoan = (sfdName: string): boolean => {
+    const sfdLoans = allLoans.filter(loan => loan.sfd === sfdName);
     return !sfdLoans.some(loan => loan.status === "Actif" || loan.status === "En cours");
+  };
+
+  // Obtenir les SFD avec prêts actifs
+  const getActiveLoanSfds = (): string[] => {
+    return allLoans
+      .filter(loan => loan.status === "Actif" || loan.status === "En cours")
+      .map(loan => loan.sfd);
+  };
+
+  const activeLoanSfds = getActiveLoanSfds();
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setFilterStatus(e.target.value);
+  };
+
+  const handleSfdChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSelectedSfd(e.target.value);
   };
 
   return (
@@ -212,11 +229,11 @@ const MyLoans = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Prêts</h1>
-              <p className="text-gray-600">Gérez et consultez vos demandes de crédit par SFD</p>
+              <p className="text-gray-600">Gérez et consultez vos demandes de crédit</p>
             </div>
 
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
-              <Link href="/dashboards/dashboard-client/loans">
+              <Link href="/dashboards/dashboard-client/saving-accounts">
                 <GlassButton
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
@@ -226,7 +243,6 @@ const MyLoans = () => {
               </Link>
             </div>
           </div>
-
           {/* Avertissement discret */}
           <div className="bg-orange-50/80 backdrop-blur-sm border border-orange-200/50 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
@@ -238,6 +254,11 @@ const MyLoans = () => {
                 <p className="text-sm text-orange-700">
                   Une SFD n'accorde qu'un seul prêt actif à la fois. Vous devez rembourser intégralement votre prêt en cours avant d'en demander un nouveau.
                 </p>
+                {activeLoanSfds.length > 0 && (
+                  <p className="text-sm text-orange-700 mt-2">
+                    <strong>SFD avec prêts actifs :</strong> {activeLoanSfds.join(', ')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -255,9 +276,9 @@ const MyLoans = () => {
                   <input
                     id="search"
                     type="text"
-                    placeholder="Objet du prêt ou numéro..."
+                    placeholder="Objet du prêt, numéro ou SFD..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -271,7 +292,7 @@ const MyLoans = () => {
                 <select
                   id="sfd-filter"
                   value={selectedSfd}
-                  onChange={(e) => setSelectedSfd(e.target.value)}
+                  onChange={handleSfdChange}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Toutes les SFD</option>
@@ -289,7 +310,7 @@ const MyLoans = () => {
                 <select
                   id="status-filter"
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
+                  onChange={handleStatusChange}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Tous les prêts</option>
@@ -304,126 +325,107 @@ const MyLoans = () => {
           </div>
         </div>
 
-        {/* Prêts groupés par SFD */}
-        <div className="space-y-6">
-          {Object.entries(filteredLoansBySfd).map(([sfd, loans]) => (
-            <GlassCard key={sfd} className="p-6" hover={false}>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
-                    <Building className="text-blue-600" size={24} />
+        {/* Liste des prêts */}
+        <div className="space-y-4">
+          {filteredLoans.map((loan) => (
+            <GlassCard key={loan.id} className="p-6" hover={false}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                      <Building className="text-blue-600" size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{loan.purpose}</h3>
+                      <p className="text-sm text-gray-600">{loan.sfd}</p>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border",
+                      getStatusColor(loan.status)
+                    )}>
+                      {getStatusIcon(loan.status)}
+                      {loan.status}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{sfd}</h2>
-                    <p className="text-sm text-gray-600">{loans.length} prêt{loans.length > 1 ? 's' : ''}</p>
-                  </div>
-                </div>
+                  <p className="text-sm text-gray-600 font-mono mb-3">{loan.id}</p>
 
-                <div className="flex items-center gap-3">
-                  {canRequestNewLoan(sfd) ? (
-                    <span className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-100 px-3 py-2 rounded-lg border border-green-200">
-                      <CheckCircle size={16} />
-                      Peut demander un nouveau prêt
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2 text-sm font-medium text-orange-700 bg-orange-100 px-3 py-2 rounded-lg border border-orange-200">
-                      {/* <Warning size={16} /> */}
-                      Prêt actif en cours
-                    </span>
-                  )}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Montant:</span>
+                      <p className="font-semibold text-blue-600">{formatCurrency(loan.amount)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Taux d'intérêt:</span>
+                      <p className="font-semibold text-purple-600">{loan.interestRate}% /an</p>
+                    </div>
+                    {loan.monthlyPayment > 0 && (
+                      <div>
+                        <span className="text-gray-600">Mensualité:</span>
+                        <p className="font-semibold text-orange-600">{formatCurrency(loan.monthlyPayment)}</p>
+                      </div>
+                    )}
+                    {loan.nextPaymentDate && (
+                      <div>
+                        <span className="text-gray-600">Prochain paiement:</span>
+                        <p className="font-semibold text-gray-900">
+                          {format(new Date(loan.nextPaymentDate), 'dd MMM yyyy', { locale: fr })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                {loans.map((loan) => (
-                  <div key={loan.id} className="bg-white/60 backdrop-blur-sm border border-white/20 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{loan.purpose}</h3>
-                          <div className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border",
-                            getStatusColor(loan.status)
-                          )}>
-                            {getStatusIcon(loan.status)}
-                            {loan.status}
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 font-mono mb-3">{loan.id}</p>
-
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Montant:</span>
-                            <p className="font-semibold text-blue-600">{formatCurrency(loan.amount)}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Taux d'intérêt:</span>
-                            <p className="font-semibold text-purple-600">{loan.interestRate}% /an</p>
-                          </div>
-                          {loan.monthlyPayment > 0 && (
-                            <div>
-                              <span className="text-gray-600">Mensualité:</span>
-                              <p className="font-semibold text-orange-600">{formatCurrency(loan.monthlyPayment)}</p>
-                            </div>
-                          )}
-                          {loan.nextPaymentDate && (
-                            <div>
-                              <span className="text-gray-600">Prochain paiement:</span>
-                              <p className="font-semibold text-gray-900">
-                                {format(new Date(loan.nextPaymentDate), 'dd MMM yyyy', { locale: fr })}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {loan.status !== "En attente" && loan.amount > 0 && (
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600">Progression du remboursement</span>
-                          <span className="font-medium">{((loan.paidAmount / loan.amount) * 100).toFixed(0)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div
-                            className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
-                            style={{ width: `${(loan.paidAmount / loan.amount) * 100}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>Payé: {formatCurrency(loan.paidAmount)}</span>
-                          <span>Reste: {formatCurrency(loan.remainingAmount)}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <div className="text-sm text-gray-500">
-                        {loan.startDate && loan.endDate ? (
-                          <>Période: {format(new Date(loan.startDate), 'MMM yyyy', { locale: fr })} - {format(new Date(loan.endDate), 'MMM yyyy', { locale: fr })}</>
-                        ) : (
-                          <>En attente d'approbation</>
-                        )}
-                      </div>
-                      <Link href={`/dashboards/dashboard-client/loans/${loan.id}`}>
-                        <GlassButton
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Eye size={16} />
-                          Voir détails
-                          <ArrowRight size={14} />
-                        </GlassButton>
-                      </Link>
-                    </div>
+              {loan.status !== "En attente" && loan.amount > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-gray-600">Progression du remboursement</span>
+                    <span className="font-medium">{((loan.paidAmount / loan.amount) * 100).toFixed(0)}%</span>
                   </div>
-                ))}
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${(loan.paidAmount / loan.amount) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Payé: {formatCurrency(loan.paidAmount)}</span>
+                    <span>Reste: {formatCurrency(loan.remainingAmount)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div className="text-sm text-gray-500">
+                  {loan.startDate && loan.endDate ? (
+                    <>Période: {format(new Date(loan.startDate), 'MMM yyyy', { locale: fr })} - {format(new Date(loan.endDate), 'MMM yyyy', { locale: fr })}</>
+                  ) : (
+                    <>En attente d'approbation</>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!canRequestNewLoan(loan.sfd) && (loan.status === "Actif" || loan.status === "En cours") && (
+                    <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-full border border-orange-200">
+                      Prêt actif - {loan.sfd}
+                    </span>
+                  )}
+                  <Link href={`/dashboards/dashboard-client/loans/${loan.id}`}>
+                    <GlassButton
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Eye size={16} />
+                      Voir détails
+                      <ArrowRight size={14} />
+                    </GlassButton>
+                  </Link>
+                </div>
               </div>
             </GlassCard>
           ))}
         </div>
 
-        {Object.keys(filteredLoansBySfd).length === 0 && (
+        {filteredLoans.length === 0 && (
           <GlassCard className="p-12 text-center">
             <CreditCard className="mx-auto mb-4 text-gray-400" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun prêt trouvé</h3>

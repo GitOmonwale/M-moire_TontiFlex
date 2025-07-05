@@ -4,6 +4,7 @@ import { archivo, chillax } from '@/lib/fonts'
 import './globals.css'
 import { LayoutWrapper } from '@/components/LayoutWrapper'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { Toaster } from 'sonner'
 
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
         <AuthProvider>
           <LayoutWrapper>
             {children}
+            <Toaster richColors position="top-right" />
           </LayoutWrapper>
         </AuthProvider>
       </body>

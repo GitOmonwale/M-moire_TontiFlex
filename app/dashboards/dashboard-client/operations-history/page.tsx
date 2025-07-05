@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,19 +11,34 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { mockTransactionHistory } from '@/data/mockData';
-import Link from 'next/link';
+
+import { useClientsAPI } from '@/hooks/useClients';
 
 const Transactions= () => {
     const [filterType, setFilterType] = useState("tous");
     const [filterStatus, setFilterStatus] = useState("tous");
     const [timeRange, setTimeRange] = useState("30j");
-
-    const filteredTransactions = mockTransactionHistory.filter(transaction => {
-        const typeMatch = filterType === "tous" || transaction.type.toLowerCase().includes(filterType.toLowerCase());
-        const statusMatch = filterStatus === "tous" || transaction.statut.toLowerCase() === filterStatus.toLowerCase();
-        return typeMatch && statusMatch;
-    });
+    const { myTransactionHistory, loading: loadingTransactions, fetchMyTransactionHistory } = useClientsAPI();
+    useEffect(() => {
+        const loadTransactions = async () => {
+            try {
+                await fetchMyTransactionHistory();
+            } catch (error) {
+                console.error('Erreur lors du chargement des transactions:', error);
+            }
+        };
+    
+     loadTransactions();
+    }, []);
+    const filteredTransactions = myTransactionHistory
+        .filter(transaction => {
+            const typeMatch = filterType === "tous" || 
+                (transaction.type_libelle?.toLowerCase() || '').includes(filterType.toLowerCase());
+            const statusMatch = filterStatus === "tous" || 
+                (transaction.statut_libelle?.toLowerCase() || '').includes(filterStatus.toLowerCase());
+            return typeMatch && statusMatch;
+        })
+        .sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
     return (
         <div>
             <div className="p-6">
@@ -58,7 +73,16 @@ const Transactions= () => {
                 </div>
 
                 <div className="space-y-3">
-                    {filteredTransactions.slice(0, 8).map((transaction) => (
+                    {loadingTransactions ? (
+                        <div className="flex justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                    ) : filteredTransactions.length === 0 ? (
+                        <div className="text-center p-8 text-gray-500">
+                            Aucune transaction trouvée
+                        </div>
+                    ) : (
+                        filteredTransactions.map((transaction) => (
                         <div key={transaction.id} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all">
                             <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${transaction.montant > 0 ? 'bg-green-100' : 'bg-red-100'
@@ -70,11 +94,10 @@ const Transactions= () => {
                                     )}
                                 </div>
                                 <div>
-                                    <p className="font-medium text-gray-900">{transaction.type}</p>
+                                    <p className="font-medium text-gray-900">{transaction.type_libelle || 'Transaction'}</p>
+                                    <p className="font-medium text-sm text-gray-500 mb-">{transaction.description}</p>
                                     <div className="flex items-center gap-2 text-sm text-gray-500">
-                                        <span>{format(new Date(transaction.date), 'dd MMM yyyy', { locale: fr })}</span>
-                                        <span>•</span>
-                                        <span>{transaction.tontine}</span>
+                                        <span>{format(new Date(transaction.date_creation), 'dd MMM yyyy à HH:mm', { locale: fr })}</span>
                                     </div>
                                 </div>
                             </div>
@@ -82,15 +105,16 @@ const Transactions= () => {
                                 <p className={`font-bold text-lg ${transaction.montant > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {transaction.montant > 0 ? '+' : ''}{transaction.montant.toLocaleString()} FCFA
                                 </p>
-                                <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${transaction.statut === 'Confirmé'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-yellow-100 text-yellow-700'
-                                    }`}>
-                                    {transaction.statut}
+                                <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                    transaction.statut === 'success' ? 'bg-green-100 text-green-700' :
+                                    transaction.statut === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {transaction.statut_libelle || transaction.statut}
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )))}
                 </div>
             </div>
         </div>
@@ -98,3 +122,4 @@ const Transactions= () => {
 }
 
 export default Transactions
+                                

@@ -35,7 +35,6 @@ const Login = () => {
 
     try {
       const user = await login(formData.email, formData.password);
-      
       if (user) {
         toast.success("Connexion réussie ! Bienvenue 🎉");
       } else {

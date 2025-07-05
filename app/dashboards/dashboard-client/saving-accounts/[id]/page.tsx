@@ -189,7 +189,7 @@ const mockTransactionHistory: Transaction[] = [
 const SavingsAccountDetails = () => {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  
+
   // For debugging - will show in browser console
   console.log('Current savings account ID:', id);
   const [account, setAccount] = useState<SavingsAccount>(mockSavingsAccount);
@@ -206,15 +206,15 @@ const SavingsAccountDetails = () => {
       console.log('Processing withdrawal:', withdrawData);
       // Here you would typically call your API to process the withdrawal
       // For example: await api.processWithdrawal(account.id, withdrawData);
-      
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Update the UI to reflect the withdrawal
       // For now, we'll just show a success message
       alert('Retrait effectué avec succès');
       setIsWithdrawalModalOpen(false);
-      
+
       // Refresh account data
       // await loadAccountData();
     } catch (error) {
@@ -230,15 +230,15 @@ const SavingsAccountDetails = () => {
       console.log('Processing deposit:', depositData);
       // Here you would typically call your API to process the deposit
       // For example: await api.processDeposit(account.id, depositData);
-      
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Update the UI to reflect the deposit
       // For now, we'll just show a success message
       alert('Dépôt effectué avec succès');
       setIsDepositModalOpen(false);
-      
+
       // Refresh account data
       // await loadAccountData();
     } catch (error) {
@@ -302,7 +302,7 @@ const SavingsAccountDetails = () => {
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Compte Épargne</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Compte Courant</h1>
             <div className="flex items-center gap-4">
               <span className="text-lg font-medium text-gray-600">{account.accountNumber}</span>
               <div className="flex items-center gap-2">
@@ -315,7 +315,7 @@ const SavingsAccountDetails = () => {
 
         {/* Section principale - Solde et Actions */}
         <div className="grid lg:grid-cols-12 gap-8 mb-8">
-          
+
           {/* Carte Solde Principal */}
           <div className="lg:col-span-5">
             <GlassCard className="p-8 text-center relative overflow-hidden">
@@ -343,7 +343,7 @@ const SavingsAccountDetails = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mb-6">
                   <p className="text-sm font-medium text-gray-600 mb-2">Solde disponible</p>
                   <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
@@ -363,7 +363,7 @@ const SavingsAccountDetails = () => {
                       Déposer
                     </GlassButton>
                     <GlassButton
-                       onClick={() => setIsWithdrawalModalOpen(true)}
+                      onClick={() => setIsWithdrawalModalOpen(true)}
                       variant="outline"
                     >
                       <ArrowDown size={16} className="mr-2" />
@@ -378,7 +378,7 @@ const SavingsAccountDetails = () => {
           {/* Statistiques en grille */}
           <div className="lg:col-span-7">
             <div className="grid grid-cols-2 gap-4 h-full">
-              
+
               {/* Total déposé */}
               <GlassCard className="p-6 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-3">
@@ -390,9 +390,6 @@ const SavingsAccountDetails = () => {
                     <p className="text-2xl font-bold text-green-600">{account.totalDepose.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Moyenne: {averageMonthlyDeposit.toLocaleString()} FCFA/mois
                 </div>
               </GlassCard>
 
@@ -408,9 +405,6 @@ const SavingsAccountDetails = () => {
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  Croissance nette: +{growthPercentage}%
-                </div>
               </GlassCard>
 
               {/* Nombre de transactions */}
@@ -425,9 +419,6 @@ const SavingsAccountDetails = () => {
                     <p className="text-xs text-gray-500">Total</p>
                   </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  Ancienneté: {monthsActive} mois
-                </div>
               </GlassCard>
 
               {/* Croissance nette */}
@@ -437,14 +428,10 @@ const SavingsAccountDetails = () => {
                     <BarChart3 className="text-purple-600" size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Croissance nette</p>
-                    <p className="text-2xl font-bold text-purple-600">{netGrowth.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600">Solde actuel</p>
+                    <p className="text-2xl font-bold text-purple-600">{account.solde.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Zap size={12} className="text-green-500" />
-                  +{growthPercentage}% de rendement
                 </div>
               </GlassCard>
             </div>
@@ -453,15 +440,15 @@ const SavingsAccountDetails = () => {
 
         {/* Section principale */}
         <div className="grid lg:grid-cols-12 gap-8">
-          
+
           {/* Contenu principal - Historique des transactions */}
           <div className="lg:col-span-8">
             <GlassCard className="p-6" hover={false}>
-              
+
               {/* Header avec filtres */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">Historique des transactions</h3>
-                
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -494,7 +481,7 @@ const SavingsAccountDetails = () => {
                   return (
                     <div key={transaction.id} className="group p-4 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/60 hover:shadow-md transition-all duration-200">
                       <div className="flex items-center gap-4">
-                        
+
                         {/* Icône de transaction */}
                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", colorClass)}>
                           <IconComponent size={20} />
@@ -529,7 +516,7 @@ const SavingsAccountDetails = () => {
                                 <p className="text-xs text-gray-400 italic">{transaction.notes}</p>
                               )}
                             </div>
-                            
+
                             {/* Montant et statut */}
                             <div className="text-right ml-4">
                               <p className={cn(
@@ -540,7 +527,7 @@ const SavingsAccountDetails = () => {
                                 {transaction.montant.toLocaleString()}
                                 <span className="text-sm ml-1">FCFA</span>
                               </p>
-                              
+
                               <div className="flex items-center justify-end gap-2 mb-1">
                                 <div className={cn(
                                   "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border",
@@ -551,7 +538,7 @@ const SavingsAccountDetails = () => {
                                     transaction.statut === 'en_attente' ? 'En attente' : 'Rejeté'}
                                 </div>
                               </div>
-                              
+
                               <div className="text-xs text-gray-400">
                                 Solde: {transaction.soldeApres.toLocaleString()} FCFA
                                 {transaction.frais && transaction.frais > 0 && (
@@ -582,42 +569,6 @@ const SavingsAccountDetails = () => {
 
           {/* Sidebar - Informations et actions */}
           <div className="lg:col-span-4 space-y-6">
-
-            {/* Informations SFD */}
-            <GlassCard className="p-6" hover={false}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                  <Building className="text-white" size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{account.sfdName}</h3>
-                  <p className="text-sm text-gray-600">Institution financière</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <MapPin className="text-gray-400 mt-1" size={16} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Adresse</p>
-                    <p className="text-sm text-gray-600">{account.sfdDetails.adresse}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Phone className="text-gray-400 mt-1" size={16} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Téléphone</p>
-                    <p className="text-sm text-gray-600">{account.sfdDetails.telephone}</p>
-                  </div>
-                </div>
-              </div>
-
-              <GlassButton variant="outline" className="w-full mt-6">
-                <Phone size={16} className="mr-2" />
-                Contacter le SFD
-              </GlassButton>
-            </GlassCard>
 
             {/* Éligibilité crédit */}
             <GlassCard className="p-6" hover={false}>
@@ -650,10 +601,10 @@ const SavingsAccountDetails = () => {
                     </p>
                   </div>
                   <Link href={`/dashboards/dashboard-client/loans/new/${id}`}>
-                  <GlassButton className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white">
-                    <CreditCard size={16} className="mr-2" />
-                    Demander un prêt
-                  </GlassButton>
+                    <GlassButton className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white">
+                      <CreditCard size={16} className="mr-2" />
+                      Demander un prêt
+                    </GlassButton>
                   </Link>
                 </div>
               ) : (
@@ -685,47 +636,47 @@ const SavingsAccountDetails = () => {
         </div>
       </div>
       {
-                isWithdrawalModalOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-                            <button
-                                onClick={() => setIsWithdrawalModalOpen(false)}
-                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-                            >
-                                ✕
-                            </button>
-                            <WithdrawalForm
-                                isOpen={isWithdrawalModalOpen}
-                                onClose={() => setIsWithdrawalModalOpen(false)}
-                                details={account}
-                                loading={loading}
-                                onSubmit={handleWithdraw}
-                            />
-                        </div>
-                    </div>
-                )
-            }
-            {
-                isDepositModalOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-                            <button
-                                onClick={() => setIsDepositModalOpen(false)}
-                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-                            >
-                                ✕
-                            </button>
-                            <DepositForm
-                                isOpen={isDepositModalOpen}
-                                onClose={() => setIsDepositModalOpen(false)}
-                                details={account}
-                                loading={loading}
-                                onSubmit={handleDeposit}
-                            />
-                        </div>
-                    </div>
-                )
-            }
+        isWithdrawalModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+              <button
+                onClick={() => setIsWithdrawalModalOpen(false)}
+                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+              >
+                ✕
+              </button>
+              <WithdrawalForm
+                isOpen={isWithdrawalModalOpen}
+                onClose={() => setIsWithdrawalModalOpen(false)}
+                details={account}
+                loading={loading}
+                onSubmit={handleWithdraw}
+              />
+            </div>
+          </div>
+        )
+      }
+      {
+        isDepositModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+              <button
+                onClick={() => setIsDepositModalOpen(false)}
+                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+              >
+                ✕
+              </button>
+              <DepositForm
+                isOpen={isDepositModalOpen}
+                onClose={() => setIsDepositModalOpen(false)}
+                details={account}
+                loading={loading}
+                onSubmit={handleDeposit}
+              />
+            </div>
+          </div>
+        )
+      }
     </div>
   );
 };

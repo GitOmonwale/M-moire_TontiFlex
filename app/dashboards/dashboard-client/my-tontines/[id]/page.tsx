@@ -15,25 +15,17 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from 'sonner';
+import { useClientsAPI } from '@/hooks/useClients';
 
 const TontineDetailsPage = () => {
     const params = useParams();
     const router = useRouter();
     const participantId = params.id as string;
 
-    const {
-        participantDetails,
-        loading,
-        error,
-        fetchParticipantDetailsComplets,
-        createCotisationForPayment,
-        confirmPayment
-    } = useParticipants();
+    const { participantDetails, loading, error, fetchParticipantDetailsComplets, createCotisationForPayment, confirmPayment } = useParticipants();
 
-    const {
-        loading: carnetLoading
-    } = useCarnetsCotisation();
-
+    const { loading: carnetLoading } = useCarnetsCotisation();
+    const { myTransactionHistory, loading: loadingTransactions, fetchMyTransactionHistory } = useClientsAPI();
     const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
     const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
 
@@ -42,12 +34,22 @@ const TontineDetailsPage = () => {
             fetchParticipantDetailsComplets(participantId);
         }
     }, []);
-
+    useEffect(() => {
+        const loadTransactions = async () => {
+            try {
+                await fetchMyTransactionHistory();
+            } catch (error) {
+                console.error('Erreur lors du chargement des transactions:', error);
+            }
+        };
+    
+     loadTransactions();
+    }, []);
     // 🆕 Fonction pour gérer la cotisation avec KKiaPay
     const handleCotisationSubmit = async (nombreMises: number, cotisationData: any) => {
         try {
             console.log('📝 Soumission cotisation:', { nombreMises, cotisationData });
-            
+
             // Créer la cotisation (sans paiement pour l'instant)
             const response = await createCotisationForPayment(participantId, {
                 nombre_mises: nombreMises,
@@ -57,7 +59,7 @@ const TontineDetailsPage = () => {
 
             console.log('✅ Réponse cotisation:', response);
             return response;
-            
+
         } catch (error) {
             console.error('❌ Erreur création cotisation:', error);
             throw error;
@@ -68,7 +70,7 @@ const TontineDetailsPage = () => {
     const handlePaymentSuccess = async (kkiapayResponse: any, cotisationData: any) => {
         try {
             console.log('🎉 Paiement réussi, confirmation en cours...', kkiapayResponse);
-            
+
             // Confirmer le paiement auprès du backend
             await confirmPayment({
                 kkiapay_transaction_id: kkiapayResponse.transactionId,
@@ -83,9 +85,11 @@ const TontineDetailsPage = () => {
 
             // Rafraîchir les détails du participant
             await fetchParticipantDetailsComplets(participantId);
-            
-            toast.success('🎉 Cotisation confirmée et enregistrée avec succès!');
-            
+
+            toast.success('🎉 Cotisation confirmée et enregistrée avec succès!', {
+                position: 'top-center'
+            });
+
         } catch (error) {
             console.error('❌ Erreur confirmation paiement:', error);
             toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
@@ -96,31 +100,6 @@ const TontineDetailsPage = () => {
     const handlePaymentError = (error: any) => {
         console.log('❌ Erreur de paiement:', error);
         toast.error(`❌ Paiement échoué: ${error.message || 'Erreur inconnue'}`);
-    };
-
-    // Fonction pour effectuer une cotisation rapide (boutons dans les carnets)
-    const effectuerCotisationRapide = async (nombreMises: number) => {
-        try {
-            // Pour les boutons rapides, on utilise un numéro de test
-            const cotisationData = {
-                nombre_mises: nombreMises,
-                numero_telephone: '+22997000000', // Numéro de test
-                commentaire: `Cotisation rapide - ${nombreMises} mise(s)`
-            };
-
-            const response = await createCotisationForPayment(participantId, cotisationData);
-            
-            // Ouvrir automatiquement le widget KKiaPay pour le paiement rapide
-            // Note: Ceci nécessiterait d'intégrer le hook useKKiaPay ici aussi
-            toast.info('💳 Cotisation créée. Ouverture du système de paiement...');
-            
-            // Rafraîchir après succès
-            await fetchParticipantDetailsComplets(participantId);
-            
-        } catch (error) {
-            console.error('Erreur lors de la cotisation rapide:', error);
-            toast.error('Erreur lors de la cotisation rapide');
-        }
     };
 
     if (loading || carnetLoading) {
@@ -174,7 +153,9 @@ const TontineDetailsPage = () => {
     function effectuerRetrait(retraitData: any): Promise<void> {
         throw new Error('Function not implemented.');
     }
-
+    const filteredTransactions = myTransactionHistory.filter(
+        (transaction) => transaction.type === 'cotisation_tontine' || transaction.type === 'retrait_tontine'
+    );
     return (
         <div className="">
             <div className="max-w-7xl mx-auto p-6">
@@ -325,7 +306,7 @@ const TontineDetailsPage = () => {
                                                             </div>
                                                             <div>
                                                                 <div className="text-base font-bold text-blue-600">
-                                                                   {Math.round(carnet.jours_coches / 31 * 100)}%
+                                                                    {Math.round(carnet.jours_coches / 31 * 100)}%
                                                                 </div>
                                                                 <div className="text-xs text-gray-500">Complété</div>
                                                             </div>
@@ -412,94 +393,126 @@ const TontineDetailsPage = () => {
                                 </CardBody>
                             </Card>
                         </Tab>
-
                         <Tab key="History" title="Historique des opérations">
                             <Card>
                                 <CardBody>
                                     <div className="space-y-6">
                                         <h3 className="text-lg font-semibold text-gray-900 mb-6">Historique des transactions</h3>
-                                        {participantDetails?.carnets_cotisation?.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {participantDetails?.carnets_cotisation?.map((carnet, index) => (
-                                                    <div key={carnet.cycle_numero} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-100">
-                                                                {carnet.carnet_complet ? (
-                                                                    <CheckCircle className="text-green-600" size={20} />
-                                                                ) : (
-                                                                    <Clock className="text-orange-600" size={20} />
-                                                                )}
+
+                                        {loadingTransactions || !myTransactionHistory ? (
+                                            <div className="flex justify-center py-8">
+                                                <Loader2 className="animate-spin h-8 w-8 text-primary" />
+                                            </div>
+                                        ) : filteredTransactions.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {filteredTransactions
+                                                    .filter(tx => tx.type === 'cotisation_tontine') // Filtrer uniquement les cotisations de tontine
+                                                    .map((transaction) => (
+                                                        <div
+                                                            key={transaction.id}
+                                                            className="p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all"
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${transaction.statut === 'success'
+                                                                            ? 'bg-green-100 text-green-600'
+                                                                            : transaction.statut === 'pending'
+                                                                                ? 'bg-yellow-100 text-yellow-600'
+                                                                                : 'bg-red-100 text-red-600'
+                                                                        }`}>
+                                                                        {transaction.statut === 'success' ? (
+                                                                            <CheckCircle size={20} />
+                                                                        ) : transaction.statut === 'pending' ? (
+                                                                            <Clock size={20} />
+                                                                        ) : (
+                                                                            <X size={20} />
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-medium text-gray-900">
+                                                                            {transaction.type_libelle}
+                                                                        </p>
+                                                                        <p className="text-sm text-gray-500">
+                                                                            {format(new Date(transaction.date_creation), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className={`font-bold ${transaction.statut === 'success'
+                                                                            ? 'text-green-600'
+                                                                            : transaction.statut === 'pending'
+                                                                                ? 'text-yellow-600'
+                                                                                : 'text-red-600'
+                                                                        }`}>
+                                                                        {transaction.montant.toLocaleString()} FCFA
+                                                                    </p>
+                                                                    <span className={`text-xs px-2 py-1 rounded-full ${transaction.statut === 'success'
+                                                                            ? 'bg-green-100 text-green-700'
+                                                                            : transaction.statut === 'pending'
+                                                                                ? 'bg-yellow-100 text-yellow-700'
+                                                                                : 'bg-red-100 text-red-700'
+                                                                        }`}>
+                                                                        {transaction.statut_libelle}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-medium text-gray-900">Carnet #{carnet.numero}</p>
-                                                                <p className="text-sm text-gray-500">
-                                                                    {carnet.jours_coches} mises payées • {format(new Date(carnet.cycle_debut), 'dd MMM yyyy', { locale: fr })}
+                                                            {transaction.description && (
+                                                                <p className="mt-2 text-sm text-gray-600">
+                                                                    {transaction.description}
                                                                 </p>
-                                                            </div>
+                                                            )}
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-bold text-green-600">
-                                                                +{(carnet.jours_coches * parseFloat(participantDetails.montantMise)).toLocaleString()} FCFA
-                                                            </p>
-                                                            <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${carnet.carnet_complet
-                                                                ? 'bg-green-100 text-green-700'
-                                                                : 'bg-orange-100 text-orange-700'
-                                                                }`}>
-                                                                {carnet.pourcentageCompletion}% complété
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-8">
-                                                <FileText className="mx-auto mb-4 text-gray-400" size={48} />
-                                                <p className="text-gray-600">Aucun carnet disponible</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardBody>
-                            </Card>
-                        </Tab>
-                    </Tabs>
-                </div>
-            </div>
-
-            {/* Modal de cotisation avec KKiaPay */}
-            {isContributionModalOpen && (
-                <ContributionForm
-                    isOpen={isContributionModalOpen}
-                    onClose={() => setIsContributionModalOpen(false)}
-                    participantDetails={participantDetails}
-                    loading={loading}
-                    onSubmit={handleCotisationSubmit}
-                    onPaymentSuccess={handlePaymentSuccess}
-                    onPaymentError={handlePaymentError}
-                />
-            )}
-
-            {/* Modal de retrait */}
-            {isWithdrawalModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-                        <button
-                            onClick={() => setIsWithdrawalModalOpen(false)}
-                            className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-                        >
-                            ✕
-                        </button>
-                        <WithdrawalForm
-                            isOpen={isWithdrawalModalOpen}
-                            onClose={() => setIsWithdrawalModalOpen(false)}
-                            details={participantDetails}
-                            loading={loading}
-                            onSubmit={effectuerRetrait}
-                        />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-8">
+                                                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                                                    <p className="mt-2 text-gray-500">Aucune transaction trouvée</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardBody>
+                                </Card>
+                            </Tab>
+                        </Tabs>
                     </div>
                 </div>
-            )}
-        </div>
-    );
-};
+
+                {/* Modal de cotisation avec KKiaPay */}
+                {isContributionModalOpen && (
+                    <ContributionForm
+                        isOpen={isContributionModalOpen}
+                        onClose={() => setIsContributionModalOpen(false)}
+                        participantDetails={participantDetails}
+                        loading={loading}
+                        onSubmit={handleCotisationSubmit}
+                        onPaymentSuccess={handlePaymentSuccess}
+                        onPaymentError={handlePaymentError}
+                    />
+                )}
+
+                {/* Modal de retrait */}
+                {isWithdrawalModalOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                        <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+                            <button
+                                onClick={() => setIsWithdrawalModalOpen(false)}
+                                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                            <WithdrawalForm
+                                isOpen={isWithdrawalModalOpen}
+                                onClose={() => setIsWithdrawalModalOpen(false)}
+                                details={participantDetails}
+                                loading={loading}
+                                onSubmit={effectuerRetrait}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
 export default TontineDetailsPage;

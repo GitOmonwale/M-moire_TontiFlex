@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,7 +34,9 @@ import { fr } from 'date-fns/locale';
 import { mockTransactionHistory, mockTontines } from '@/data/mockData';
 import Link from 'next/link';
 import MyTontines from '@/components/tontines/MyTontines';
-import Transactions from '@/components/tontines/Transactions';
+import { useTontines } from '@/hooks/useTontines';
+import { MyTontine } from '@/types/tontines';
+import MyTransactions from '@/components/tontines/MyTransactions';
 
 const ModernDashboard = () => {
   // Données enrichies pour le dashboard
@@ -59,59 +61,63 @@ const ModernDashboard = () => {
       const statusMatch = filterStatus === "tous" || transaction.statut.toLowerCase() === filterStatus.toLowerCase();
       return typeMatch && statusMatch;
   });
+  const [myTontines, setMyTontines] = useState<MyTontine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { fetchMyTontines } = useTontines();
+
+  useEffect(() => {
+    const loadTontines = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchMyTontines();
+        setMyTontines(data);
+      } catch (err) {
+        setError('Failed to load tontines');
+        console.error('Error loading tontines:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTontines();
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
       <div className="max-w-7xl mx-auto p-6">
         {/* Stats cards principales */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <GlassCard className="p-6 border-l-4 border-l-emerald-500 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Solde total</p>
-                <p className="text-2xl font-bold text-emerald-600">{dashboardStats.soldeTotal.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">FCFA</p>
-              </div>
-              <div className="h-12 w-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Wallet className="text-emerald-600" size={24} />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
-              <ArrowUp size={16} className="mr-1" />
-              +12% ce mois
-            </div>
-          </GlassCard>
-
           <GlassCard className="p-6 border-l-4 border-l-blue-500 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Tontines actives</p>
-                <p className="text-2xl font-bold text-blue-600">{dashboardStats.totalTontines}</p>
-                <p className="text-xs text-gray-500">SFD différents</p>
+                <p className="text-2xl font-bold text-blue-600">{myTontines.length}</p>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <Users className="text-blue-600" size={24} />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-blue-600">
-              <Target size={16} className="mr-1" />
-              Rang #{dashboardStats.rangTontine}
+          </GlassCard>
+          <GlassCard className="p-6 border-l-4 border-l-emerald-500 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Comptes courant</p>
+                <p className="text-2xl font-bold text-emerald-600">2</p>
+              </div>
+              <div className="h-12 w-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <PiggyBank className="text-emerald-600" size={24} />
+              </div>
             </div>
           </GlassCard>
-
           <GlassCard className="p-6 border-l-4 border-l-purple-500 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Épargne totale</p>
-                <p className="text-2xl font-bold text-purple-600">{dashboardStats.montantEpargne.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">FCFA</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">Prêts en cours</p>
+                <p className="text-2xl font-bold text-purple-600">2</p>
               </div>
               <div className="h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <PiggyBank className="text-purple-600" size={24} />
               </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-purple-600">
-              <BarChart3 size={16} className="mr-1" />
-              {dashboardStats.comptesEpargne} comptes
             </div>
           </GlassCard>
         </div>
@@ -128,13 +134,15 @@ const ModernDashboard = () => {
             <GlassCard className="p-6" hover={false}>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
             <div className="space-y-3">
+              <Link href="/dashboards/dashboard-client/saving-accounts/new">
                   <GlassButton variant="outline" className="w-full h-12 text-left justify-start border-2">
                   <PiggyBank className="mr-3" size={20} />
                   <div>
                     <div className="font-medium">Épargner</div>
-                    <div className="text-xs text-gray-500">Ouvrir un compte épargne</div>
+                    <div className="text-xs text-gray-500">Ouvrir un compte courant</div>
                   </div>
                 </GlassButton>
+              </Link>
               </div>
             </GlassCard>
 
@@ -175,69 +183,7 @@ const ModernDashboard = () => {
         <div className='mt-8' >
         <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-semibold text-black flex items-center">
-                        Historique des Opérations
-                    </h2>
-                    <div className="flex gap-3">
-                        <Select value={timeRange} onValueChange={setTimeRange}>
-                            <SelectTrigger className="w-[120px] bg-white/60">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="7j">7 jours</SelectItem>
-                                <SelectItem value="30j">30 jours</SelectItem>
-                                <SelectItem value="90j">3 mois</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-[140px] bg-white/60">
-                                <Filter className="mr-2" size={16} />
-                                <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="tous">Tous types</SelectItem>
-                                <SelectItem value="contribution">Contribution</SelectItem>
-                                <SelectItem value="retrait">Retrait</SelectItem>
-                                <SelectItem value="dépôt">Dépôt Épargne</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    {filteredTransactions.slice(0, 8).map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${transaction.montant > 0 ? 'bg-green-100' : 'bg-red-100'
-                                    }`}>
-                                    {transaction.montant > 0 ? (
-                                        <ArrowUp className="text-green-600" size={20} />
-                                    ) : (
-                                        <ArrowDown className="text-red-600" size={20} />
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-900">{transaction.type}</p>
-                                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                                        <span>{format(new Date(transaction.date), 'dd MMM yyyy', { locale: fr })}</span>
-                                        <span>•</span>
-                                        <span>{transaction.tontine}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className={`font-bold text-lg ${transaction.montant > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {transaction.montant > 0 ? '+' : ''}{transaction.montant.toLocaleString()} FCFA
-                                </p>
-                                <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${transaction.statut === 'Confirmé'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-yellow-100 text-yellow-700'
-                                    }`}>
-                                    {transaction.statut}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                <MyTransactions />
                 </div>
 
                 <div className="mt-6 text-center">

@@ -18,13 +18,13 @@ const SavingsAccountForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary via-white to-accent">      
+    <div className="min-h-screen">      
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
-          <GlassCard>
+          <GlassCard hover={false}>
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-primary mb-2">Ouvrir un Compte Épargne</h1>
-              <p className="text-gray-600">Commencez à épargner dès aujourd'hui</p>
+              <h1 className="text-3xl font-bold text-primary mb-2">Ouvrir un Compte Courant</h1>
+              <p className="text-gray-600">Compte Courant</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">

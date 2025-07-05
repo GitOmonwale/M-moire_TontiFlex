@@ -66,7 +66,7 @@ const MyTontines = () => {
                                     </div>
                                 </div>
                             </div>
-                            <Link href={`/dashboards/dashboard-client/my-tontines/${tontine.idParticipant}`}>
+                            <Link href={`/dashboards/dashboard-client/my-tontines/${tontine.participant_id}`}>
                                 <GlassButton variant="outline" size="sm">
                                     <Eye className="mr-1" size={14} />
                                     Détails

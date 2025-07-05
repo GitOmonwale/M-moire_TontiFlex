@@ -1,41 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
-// Types
+// Types TypeScript basés sur l'API des clients
+export type ClientStatus = 'actif' | 'inactif' | 'suspendu';
+
+export type TransactionType = 
+  | 'adhesion_tontine'
+  | 'cotisation_tontine' 
+  | 'retrait_tontine'
+  | 'frais_creation_epargne'
+  | 'depot_epargne'
+  | 'retrait_epargne'
+  | 'remboursement_pret'
+  | 'autre';
+
+export type TransactionStatus = 
+  | 'success'
+  | 'pending' 
+  | 'failed'
+  | 'initialized'
+  | string; // Pour couvrir d'autres statuts possibles
+
+export type RetraitStatus = 'en_attente' | 'valide' | 'traite' | 'rejete';
+export type RetraitType = 'partiel' | 'fin_cycle' | 'urgence' | 'distribution';
+
+export type TontineParticipationStatus = 'actif' | 'suspendu' | 'en_attente' | 'termine';
+
 export interface Client {
-  id: string; // UUID
-  tontines_count: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  email: string;
+  id: string; // UUID, readOnly
+  tontines_count: string; // readOnly
+  nom: string; // maxLength: 100
+  prenom: string; // maxLength: 100
+  telephone: string; // pattern: ^\+?1?\d{9,15}$, maxLength: 15
+  email: string; // email, maxLength: 254
   adresse: string;
-  profession: string;
-  motDePasse: string;
-  dateCreation?: string;
-  statut?: 'actif' | 'inactif' | 'suspendu';
-  derniere_connexion?: string | null;
+  profession: string; // maxLength: 100
+  motDePasse: string; // maxLength: 128, hashé
+  dateCreation?: string; // datetime
+  statut?: ClientStatus;
+  derniere_connexion?: string | null; // datetime, nullable
   email_verifie: boolean;
-  pieceIdentite?: string | null;
-  photoIdentite?: string | null;
-  scorefiabilite: string;
-  user?: number | null;
-}
-
-export interface PaginatedClientList {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: Client[];
-}
-
-export interface ClientsFilters {
-  page?: number;
-  sfd_id?: string;
-  statut?: 'actif' | 'inactif' | 'suspendu';
-  date_inscription_debut?: string;
-  date_inscription_fin?: string;
-  search?: string; // recherche textuelle (nom, email, téléphone)
+  pieceIdentite?: string | null; // URI, nullable, pattern: (?:pdf|jpg|jpeg|png)$
+  photoIdentite?: string | null; // URI, nullable, pattern: (?:jpg|jpeg|png)$
+  scorefiabilite: string; // decimal, pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+  user?: number | null; // nullable
 }
 
 export interface ClientCotisation {
@@ -46,11 +55,11 @@ export interface ClientCotisation {
   statut: 'pending' | 'confirmee' | 'rejetee';
   tontine_nom: string;
   cycle_numero: number;
-  jour_carnet: number | null;
+  jour_carnet?: number | null;
   est_commission_sfd: boolean;
   cycle_display: string;
   type_cotisation: string;
-  transaction_kkiapay: string | null;
+  transaction_kkiapay?: string | null;
 }
 
 export interface ClientRetrait {
@@ -59,8 +68,8 @@ export interface ClientRetrait {
   montant_recu?: string;
   date_demande: string;
   date_traitement?: string;
-  statut: 'en_attente' | 'valide' | 'traite' | 'rejete';
-  type_retrait: 'partiel' | 'fin_cycle' | 'urgence' | 'distribution';
+  statut: RetraitStatus;
+  type_retrait: RetraitType;
   tontine_nom: string;
   agent_validateur?: string;
   motif_rejet?: string;
@@ -78,7 +87,7 @@ export interface ClientTontine {
   nombre_participants: number;
   cycle_actuel: number;
   progression: number; // pourcentage
-  statut_participation: 'actif' | 'suspendu' | 'en_attente' | 'termine';
+  statut_participation: TontineParticipationStatus;
   position_distribution: number;
   prochaine_date_reception?: string;
   solde_accumule: string;
@@ -89,40 +98,113 @@ export interface ClientTontine {
   distributions_recues: number;
 }
 
-export interface ClientStats {
+export interface KKiaPayTransaction {
+  id: string; // UUID
+  reference: string; // Référence TontiFlex
+  type: TransactionType;
+  type_libelle: string;
+  montant: number;
+  devise: string; // XOF
+  statut: TransactionStatus;
+  statut_libelle: string;
+  date_creation: string; // datetime
+  date_traitement?: string | null; // datetime, nullable
+  description: string;
+  numero_telephone: string;
+  reference_kkiapay: string;
+  success: boolean;
+  pending: boolean;
+  failed: boolean;
+}
+
+export interface ClientCotisationsStats {
   total_cotisations: string;
   moyenne_mensuelle: string;
   jours_ponctualite: number;
   bonus_appliques: string;
   penalites_appliquees: string;
+}
+
+export interface ClientRetraitsStats {
   total_retraits: string;
   delai_moyen_traitement: number;
   taux_approbation: number;
   solde_disponible: string;
 }
 
-interface ApiError {
-  message: string;
-  status?: number;
+export interface PaginatedClientList {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Client[];
 }
 
-const API_BASE_URL = 'https://tontiflexapp.onrender.com/api';
+export interface ClientsFilters {
+  page?: number;
+  sfd_id?: string;
+  statut?: ClientStatus;
+  date_inscription_debut?: string;
+  date_inscription_fin?: string;
+  search?: string; // recherche textuelle (nom, email, téléphone)
+}
 
-// Hook pour lister les clients
-export const useClients = (filters: ClientsFilters = {}) => {
-  const [clients, setClients] = useState<PaginatedClientList | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
+interface useClientsAPIResults {
+  clients: Client[];
+  client: Client | null;
+  clientCotisations: ClientCotisation[];
+  clientRetraits: ClientRetrait[];
+  clientTontines: ClientTontine[];
+  myTransactionHistory: KKiaPayTransaction[];
+  cotisationsStats: ClientCotisationsStats | null;
+  retraitsStats: ClientRetraitsStats | null;
+  loading: boolean;
+  error: string | null;
+
+  // Clients operations
+  fetchClients: (filters?: ClientsFilters) => Promise<PaginatedClientList>;
+  fetchClientById: (id: string) => Promise<Client | null>;
+
+  // Client specific data
+  fetchClientCotisations: (id: string) => Promise<{
+    cotisations: ClientCotisation[];
+    stats?: ClientCotisationsStats;
+  }>;
+  fetchClientRetraits: (id: string) => Promise<{
+    retraits: ClientRetrait[];
+    stats?: ClientRetraitsStats;
+  }>;
+  fetchClientTontines: (id: string) => Promise<ClientTontine[]>;
+
+  // My transactions (for connected client)
+  fetchMyTransactionHistory: () => Promise<KKiaPayTransaction[]>;
+}
+
+export function useClientsAPI(): useClientsAPIResults {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [client, setClient] = useState<Client | null>(null);
+  const [clientCotisations, setClientCotisations] = useState<ClientCotisation[]>([]);
+  const [clientRetraits, setClientRetraits] = useState<ClientRetrait[]>([]);
+  const [clientTontines, setClientTontines] = useState<ClientTontine[]>([]);
+  const [myTransactionHistory, setMyTransactionHistory] = useState<KKiaPayTransaction[]>([]);
+  const [cotisationsStats, setCotisationsStats] = useState<ClientCotisationsStats | null>(null);
+  const [retraitsStats, setRetraitsStats] = useState<ClientRetraitsStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { accessToken } = useAuth();
+  const baseUrl = 'https://tontiflexapp.onrender.com/api';
 
-  const fetchClients = useCallback(async () => {
-    if (!accessToken) return;
-    
-    setIsLoading(true);
+  const getAuthHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+    };
+  };
+
+  // Récupérer la liste des clients
+  const fetchClients = useCallback(async (filters: ClientsFilters = {}): Promise<PaginatedClientList> => {
+    setLoading(true);
     setError(null);
-
     try {
-      // Construction des paramètres de requête
       const searchParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -130,66 +212,38 @@ export const useClients = (filters: ClientsFilters = {}) => {
         }
       });
 
-      const url = `${API_BASE_URL}/accounts/clients/?${searchParams.toString()}`;
-      
+      const url = `${baseUrl}/accounts/clients/?${searchParams.toString()}`;
       const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error('Erreur lors du chargement des clients');
       }
-
+      
       const data: PaginatedClientList = await response.json();
-      setClients(data);
+      setClients(data.results || []);
+      console.log("clients", data.results);
+      return data;
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : 'Erreur lors du chargement des clients',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error('Erreur lors du chargement des clients');
+      throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [accessToken, filters]);
+  }, [accessToken]);
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  return {
-    clients,
-    isLoading,
-    error,
-    refetch: fetchClients,
-  };
-};
-
-// Hook pour récupérer un client spécifique
-export const useClient = (id: string | null) => {
-  const [client, setClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const { accessToken } = useAuth();
-
-  const fetchClient = useCallback(async () => {
-    if (!accessToken || !id) return;
-    
-    setIsLoading(true);
-    setError(null);
-
+  // Récupérer un client par ID
+  const fetchClientById = async (id: string): Promise<Client | null> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/accounts/clients/${id}/`, {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/accounts/clients/${id}/`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('Accès refusé à ce profil');
@@ -197,58 +251,33 @@ export const useClient = (id: string | null) => {
         if (response.status === 404) {
           throw new Error('Client introuvable');
         }
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error('Erreur lors du chargement du client');
       }
-
-      const data: Client = await response.json();
-      setClient(data);
+      
+      const clientData = await response.json();
+      setClient(clientData);
+      return clientData;
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : 'Erreur lors du chargement du client',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement du client');
+      return null;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [accessToken, id]);
-
-  useEffect(() => {
-    if (id) {
-      fetchClient();
-    }
-  }, [fetchClient, id]);
-
-  return {
-    client,
-    isLoading,
-    error,
-    refetch: fetchClient,
   };
-};
 
-// Hook pour l'historique des cotisations d'un client
-export const useClientCotisations = (clientId: string | null) => {
-  const [cotisations, setCotisations] = useState<ClientCotisation[] | null>(null);
-  const [stats, setStats] = useState<Partial<ClientStats> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const { accessToken } = useAuth();
-
-  const fetchClientCotisations = useCallback(async () => {
-    if (!accessToken || !clientId) return;
-    
-    setIsLoading(true);
-    setError(null);
-
+  // Récupérer l'historique des cotisations d'un client
+  const fetchClientCotisations = async (id: string): Promise<{
+    cotisations: ClientCotisation[];
+    stats?: ClientCotisationsStats;
+  }> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/accounts/clients/${clientId}/cotisations/`, {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/accounts/clients/${id}/cotisations/`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('Accès refusé à cet historique');
@@ -256,68 +285,52 @@ export const useClientCotisations = (clientId: string | null) => {
         if (response.status === 404) {
           throw new Error('Client introuvable');
         }
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error('Erreur lors du chargement des cotisations');
       }
-
+      
       const data = await response.json();
       
-      // La réponse peut contenir les cotisations et les statistiques
+      // La réponse peut être un array direct ou un objet avec cotisations et stats
+      let cotisations: ClientCotisation[] = [];
+      let stats: ClientCotisationsStats | undefined;
+      
       if (Array.isArray(data)) {
-        setCotisations(data);
+        cotisations = data;
       } else if (data.cotisations) {
-        setCotisations(data.cotisations);
-        setStats(data.stats);
+        cotisations = data.cotisations;
+        stats = data.stats;
       } else {
-        setCotisations(data);
+        // Si c'est un objet mais pas la structure attendue, essayer de l'utiliser directement
+        cotisations = data;
       }
+      
+      setClientCotisations(cotisations);
+      if (stats) {
+        setCotisationsStats(stats);
+      }
+      
+      return { cotisations, stats };
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : 'Erreur lors du chargement des cotisations du client',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement des cotisations du client');
+      throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [accessToken, clientId]);
-
-  useEffect(() => {
-    if (clientId) {
-      fetchClientCotisations();
-    }
-  }, [fetchClientCotisations, clientId]);
-
-  return {
-    cotisations,
-    stats,
-    isLoading,
-    error,
-    refetch: fetchClientCotisations,
   };
-};
 
-// Hook pour l'historique des retraits d'un client
-export const useClientRetraits = (clientId: string | null) => {
-  const [retraits, setRetraits] = useState<ClientRetrait[] | null>(null);
-  const [stats, setStats] = useState<Partial<ClientStats> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const { accessToken } = useAuth();
-
-  const fetchClientRetraits = useCallback(async () => {
-    if (!accessToken || !clientId) return;
-    
-    setIsLoading(true);
-    setError(null);
-
+  // Récupérer l'historique des retraits d'un client
+  const fetchClientRetraits = async (id: string): Promise<{
+    retraits: ClientRetrait[];
+    stats?: ClientRetraitsStats;
+  }> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/accounts/clients/${clientId}/retraits/`, {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/accounts/clients/${id}/retraits/`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('Accès refusé à cet historique');
@@ -325,67 +338,49 @@ export const useClientRetraits = (clientId: string | null) => {
         if (response.status === 404) {
           throw new Error('Client introuvable');
         }
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error('Erreur lors du chargement des retraits');
       }
-
+      
       const data = await response.json();
       
-      // La réponse peut contenir les retraits et les statistiques
+      // La réponse peut être un array direct ou un objet avec retraits et stats
+      let retraits: ClientRetrait[] = [];
+      let stats: ClientRetraitsStats | undefined;
+      
       if (Array.isArray(data)) {
-        setRetraits(data);
+        retraits = data;
       } else if (data.retraits) {
-        setRetraits(data.retraits);
-        setStats(data.stats);
+        retraits = data.retraits;
+        stats = data.stats;
       } else {
-        setRetraits(data);
+        // Si c'est un objet mais pas la structure attendue, essayer de l'utiliser directement
+        retraits = data;
       }
+      
+      setClientRetraits(retraits);
+      if (stats) {
+        setRetraitsStats(stats);
+      }
+      
+      return { retraits, stats };
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : 'Erreur lors du chargement des retraits du client',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement des retraits du client');
+      throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [accessToken, clientId]);
-
-  useEffect(() => {
-    if (clientId) {
-      fetchClientRetraits();
-    }
-  }, [fetchClientRetraits, clientId]);
-
-  return {
-    retraits,
-    stats,
-    isLoading,
-    error,
-    refetch: fetchClientRetraits,
   };
-};
 
-// Hook pour les tontines d'un client
-export const useClientTontines = (clientId: string | null) => {
-  const [tontines, setTontines] = useState<ClientTontine[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const { accessToken } = useAuth();
-
-  const fetchClientTontines = useCallback(async () => {
-    if (!accessToken || !clientId) return;
-    
-    setIsLoading(true);
-    setError(null);
-
+  // Récupérer les tontines d'un client
+  const fetchClientTontines = async (id: string): Promise<ClientTontine[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/accounts/clients/${clientId}/tontines/`, {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/accounts/clients/${id}/tontines/`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('Accès refusé à ces informations');
@@ -393,122 +388,69 @@ export const useClientTontines = (clientId: string | null) => {
         if (response.status === 404) {
           throw new Error('Client introuvable');
         }
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error('Erreur lors du chargement des tontines');
       }
-
-      const data: ClientTontine[] = await response.json();
-      setTontines(data);
+      
+      const tontines: ClientTontine[] = await response.json();
+      setClientTontines(tontines);
+      return tontines;
     } catch (err) {
-      setError({
-        message: err instanceof Error ? err.message : 'Erreur lors du chargement des tontines du client',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement des tontines du client');
+      throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [accessToken, clientId]);
-
-  useEffect(() => {
-    if (clientId) {
-      fetchClientTontines();
-    }
-  }, [fetchClientTontines, clientId]);
-
-  return {
-    tontines,
-    isLoading,
-    error,
-    refetch: fetchClientTontines,
   };
-};
 
-// Hook combiné pour toutes les données d'un client
-export const useClientDetails = (clientId: string | null) => {
-  const { client, isLoading: isLoadingClient, error: clientError, refetch: refetchClient } = useClient(clientId);
-  const { cotisations, stats: cotisationsStats, isLoading: isLoadingCotisations, error: cotisationsError, refetch: refetchCotisations } = useClientCotisations(clientId);
-  const { retraits, stats: retraitsStats, isLoading: isLoadingRetraits, error: retraitsError, refetch: refetchRetraits } = useClientRetraits(clientId);
-  const { tontines, isLoading: isLoadingTontines, error: tontinesError, refetch: refetchTontines } = useClientTontines(clientId);
-
-  const refetchAll = useCallback(() => {
-    refetchClient();
-    refetchCotisations();
-    refetchRetraits();
-    refetchTontines();
-  }, [refetchClient, refetchCotisations, refetchRetraits, refetchTontines]);
-
-  return {
-    client,
-    cotisations,
-    retraits,
-    tontines,
-    stats: {
-      ...cotisationsStats,
-      ...retraitsStats,
-    },
-    isLoading: isLoadingClient || isLoadingCotisations || isLoadingRetraits || isLoadingTontines,
-    error: clientError || cotisationsError || retraitsError || tontinesError,
-    refetchAll,
-  };
-};
-
-// Hook utilitaire pour rechercher des clients
-export const useClientSearch = () => {
-  const [searchResults, setSearchResults] = useState<Client[] | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState<ApiError | null>(null);
-  const { accessToken } = useAuth();
-
-  const searchClients = useCallback(async (query: string, filters: Omit<ClientsFilters, 'search'> = {}) => {
-    if (!accessToken || !query.trim()) {
-      setSearchResults(null);
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchError(null);
-
+  // Récupérer l'historique complet des transactions KKiaPay du client connecté
+  const fetchMyTransactionHistory = async (): Promise<KKiaPayTransaction[]> => {
     try {
-      const searchParams = new URLSearchParams({
-        search: query.trim(),
-        ...Object.fromEntries(
-          Object.entries(filters).filter(([_, value]) => value !== undefined && value !== null)
-        ),
-      });
-
-      const response = await fetch(`${API_BASE_URL}/accounts/clients/?${searchParams.toString()}`, {
+      setLoading(true);
+      const response = await fetch(`${baseUrl}/accounts/clients/my-histories/`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       });
-
+      
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        if (response.status === 403) {
+          throw new Error('Accès refusé - seuls les clients peuvent accéder');
+        }
+        if (response.status === 404) {
+          throw new Error('Client introuvable');
+        }
+        throw new Error('Erreur lors du chargement de l\'historique des transactions');
       }
-
-      const data: PaginatedClientList = await response.json();
-      setSearchResults(data.results);
+      
+      const transactions: KKiaPayTransaction[] = await response.json();
+      setMyTransactionHistory(transactions);
+      console.log("historique transactions KKiaPay", transactions);
+      return transactions;
     } catch (err) {
-      setSearchError({
-        message: err instanceof Error ? err.message : 'Erreur lors de la recherche de clients',
-        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
-      });
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      toast.error('Erreur lors du chargement de l\'historique des transactions');
+      throw err;
     } finally {
-      setIsSearching(false);
+      setLoading(false);
     }
-  }, [accessToken]);
-
-  const clearSearch = useCallback(() => {
-    setSearchResults(null);
-    setSearchError(null);
-  }, []);
+  };
 
   return {
-    searchResults,
-    isSearching,
-    searchError,
-    searchClients,
-    clearSearch,
+    clients,
+    client,
+    clientCotisations,
+    clientRetraits,
+    clientTontines,
+    myTransactionHistory,
+    cotisationsStats,
+    retraitsStats,
+    loading,
+    error,
+    fetchClients,
+    fetchClientById,
+    fetchClientCotisations,
+    fetchClientRetraits,
+    fetchClientTontines,
+    fetchMyTransactionHistory,
   };
-};
+}

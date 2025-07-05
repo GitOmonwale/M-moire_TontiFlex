@@ -15,7 +15,7 @@ interface useTontinesResults {
   tontines: Tontine[];
   loading: boolean;
   error: string | null;
-  fetchTontines: () => Promise<void>;
+  fetchTontines: () => Promise<Tontine[]>;
   fetchTontineById: (id: string) => Promise<Tontine | null>;
   fetchAvailableTontines: () => Promise<Tontine[]>;
   fetchMyTontines: () => Promise<MyTontine[]>;
@@ -44,21 +44,21 @@ export function useTontines(): useTontinesResults {
     return headers;
   };
 
-  const fetchTontines = useCallback(async () => {
+  const fetchTontines = useCallback(async (): Promise<Tontine[]> => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${baseUrl}/tontines/`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(`${baseUrl}/tontines/`);
       
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des tontines');
       }
       
       const data: PaginatedResponse<Tontine> = await response.json();
-      setTontines(data.results || []);
-      console.log("tontines", data.results);
+      const tontines = data.results || [];
+      setTontines(tontines);
+      console.log("tontines", tontines);
+      return tontines;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);

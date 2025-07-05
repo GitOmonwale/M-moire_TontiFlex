@@ -12,7 +12,12 @@ import {
   ClipboardList,
   TrendingUp,
   Target,
-  BarChart3
+  BarChart3,
+  Activity,
+  Settings,
+  Globe,
+  Database,
+  Building2
 } from 'lucide-react';
 import { RoleKey } from '@/constants/roles';
 
@@ -29,17 +34,45 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
   ADMIN_PLATEFORME: [
     {
       id: 1,
-      label: 'Utilisateurs',
+      label: 'Tableau de bord',
       icon: Users,
       link: '/dashboards/dashboard-admin_tontiflex',
       description: 'Gestion des utilisateurs'
     },
     {
       id: 2,
-      label: 'Articles',
-      icon: Book,
-      link: '/dashboards/dashboard-admin_tontiflex/blog',
-      description: 'Gestion des articles'
+      label: 'Gestion utilisateurs',
+      icon: Users,
+      link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+      description: 'Gestion des utilisateurs'
+    },
+    {
+      id: 3,
+      label: 'Gestion SFD',
+      icon: Building2,
+      link: '/dashboards/dashboard-admin_tontiflex/sfd',
+      description: 'Gestion des SFD'
+    },
+    {
+      id: 4,
+      label: 'Analytics',
+      icon: TrendingUp,
+      link: '/dashboards/dashboard-admin_tontiflex/analytics',
+      description: 'Analytics'
+    },
+    {
+      id: 5,
+      label: 'Logs & Audit',
+      icon: Database,
+      link: '/dashboards/dashboard-admin_tontiflex/logs',
+      description: 'Logs & Audit'
+    },
+    {
+      id: 6,
+      label: 'Paramètres',
+      icon: Settings,
+      link: '/dashboards/dashboard-admin_tontiflex/settings',
+      description: 'Paramètres'
     }
   ],
   ADMIN_SFD: [
@@ -55,7 +88,7 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       label: 'Tontines',
       icon: FileText,
       link: '/dashboards/dashboard-adminsfd/tontines',
-      description: 'Gestion des transactions'
+      description: 'Gestion des tontines'
     },
     // {
     //   id: 3,
@@ -96,38 +129,38 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
     },
     {
       id: 2,
+      label: 'Adhésions',
+      icon: Users,
+      link: '/dashboards/dashboard-client/membership-requests',
+      description: 'Gérer vos demandes d\'adhésion'
+    },
+    {
+      id: 3,
       label: 'Tontines',
       icon: Users,
       link: '/dashboards/dashboard-client/my-tontines',
       description: 'Gérer vos tontines'
     },
     {
-      id: 3,
-      label: 'Épargnes',
+      id: 4,
+      label: 'Compte Courant',
       icon: PiggyBank,
       link: '/dashboards/dashboard-client/saving-accounts',
-      description: 'Vos épargnes'
-    },
-    {
-      id: 4,
-      label: 'Prêts',
-      icon: PiggyBank,
-      link: '/dashboards/dashboard-client/loans',
-      description: 'Vos prêts'
+      description: 'Gérer vos comptes courants'
     },
     {
       id: 5,
+      label: 'Prêts',
+      icon: PiggyBank,
+      link: '/dashboards/dashboard-client/loans',
+      description: 'Gérer vos prêts'
+    },
+    {
+      id: 6,
       label: 'Historiques',
       icon: FileText,
       link: '/dashboards/dashboard-client/operations-history',
       description: 'Historique des opérations'
-    },
-      {
-      id: 6,
-      label: 'Profil',
-      icon: User,
-      link: '/dashboards/dashboard-client/profile',
-      description: 'Paramètres'
     }
   ],
   AGENT_SFD: [
@@ -186,12 +219,12 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       icon: TrendingUp,
       link: '/dashboards/dashboard-supervisor/loan-tracking',
     },
-    {
-      id: 4,
-      label: 'Scores de fiabilité',
-      icon: Target,
-      link: '/dashboards/dashboard-supervisor/reliability-scores',
-    },
+    // {
+    //   id: 4,
+    //   label: 'Scores de fiabilité',
+    //   icon: Target,
+    //   link: '/dashboards/dashboard-supervisor/reliability-scores',
+    // },
     {
       id: 5,
       label: 'Rapports & Analytics',

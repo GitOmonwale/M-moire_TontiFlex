@@ -84,7 +84,7 @@ const handleLogout = async () => {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 h-screen bg-primary text-white transition-all duration-300 z-50",
+        "fixed left-0 top-0 h-screen bg-primary text-white transition-all duration-300 z-50 overflow-y-auto scrollbar-hide",
         isMobile ? (
           isOpen ? "w-64" : "-translate-x-full"
         ) : (

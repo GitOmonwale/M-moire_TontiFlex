@@ -199,11 +199,11 @@ const LoansValidation = () => {
           <Clock size={12} />
           En attente
         </span>;
-      case 'urgent':
-        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <AlertTriangle size={12} />
-          Urgent
-        </span>;
+        case 'validé':
+          return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1">
+            <AlertTriangle size={12} />
+            Validé
+          </span>;
       default:
         return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Inconnu</span>;
     }
@@ -231,9 +231,9 @@ const LoansValidation = () => {
           
           <GlassCard className="p-4 text-center border-l-4 border-l-red-500">
             <div className="text-2xl font-bold text-red-600 mb-1">
-              {loans.filter(l => l.statut === 'urgent').length}
+              {loans.filter(l => l.statut === 'validé').length}
             </div>
-            <div className="text-sm text-gray-600">Urgents</div>
+            <div className="text-sm text-gray-600">Validés</div>
           </GlassCard>
           
           <GlassCard className="p-4 text-center border-l-4 border-l-emerald-500">
@@ -269,7 +269,7 @@ const LoansValidation = () => {
                   <SelectContent>
                     <SelectItem value="all">Tous statuts</SelectItem>
                     <SelectItem value="en_attente">En attente</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="validé">Validé</SelectItem>
                   </SelectContent>
                 </Select>
 

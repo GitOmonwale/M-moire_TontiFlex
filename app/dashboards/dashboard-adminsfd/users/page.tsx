@@ -444,11 +444,11 @@ const UsersManagement = () => {
                         <div className="space-y-1 text-sm">
                           <div>Tontines: {user.tontinesActives}</div>
                           <div>Épargne: {user.comptesEpargne}</div>
-                          <div className={`font-medium ${getPerformanceColor(user.scoreCredit)}`}>
+                          <div className={`font-medium ${getPerformanceColor(user.scoreCredit ?? 0)}`}>
                             Score: {user.scoreCredit}/100
                           </div>
                           <div className="text-xs text-gray-500">
-                            {user.totalCotisations.toLocaleString()} FCFA cotisés
+                            {user.totalCotisations?.toLocaleString()} FCFA cotisés
                           </div>
                         </div>
                       ) : (
@@ -457,7 +457,7 @@ const UsersManagement = () => {
                             <>
                               <div>Clients: {user.clientsGeres}</div>
                               <div>Validations: {user.adhesionsValidees}</div>
-                              <div className={`font-medium ${getPerformanceColor(user.performanceScore)}`}>
+                              <div className={`font-medium ${getPerformanceColor(user.performanceScore ?? 0)}`}>
                                 Performance: {user.performanceScore}%
                               </div>
                             </>
@@ -466,7 +466,7 @@ const UsersManagement = () => {
                             <>
                               <div>Prêts: {user.pretsSupervises}</div>
                               <div>Approuvés: {user.pretsApprouves}</div>
-                              <div className={`font-medium ${getPerformanceColor(user.performanceScore)}`}>
+                              <div className={`font-medium ${getPerformanceColor(user.performanceScore ?? 0)}`}>
                                 Taux: {user.tauxApprobation}%
                               </div>
                             </>

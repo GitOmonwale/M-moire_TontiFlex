@@ -351,7 +351,7 @@ const LoanTrackingPage = () => {
                         
                         {/* Badge statut */}
                         <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(loan.status)}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap border ${getStatusColor(loan.status)}`}>
                             {getStatusIcon(loan.status)}
                             <span className="ml-1">{getStatusLabel(loan.status)}</span>
                           </span>

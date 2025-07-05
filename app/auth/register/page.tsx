@@ -179,7 +179,7 @@ const Register = () => {
     };
 
     return (
-        <div className="grid grid-cols-2 h-full">
+        <div className="h-auto items-center grid md:grid-cols-2 grid-cols-1">
           <div className="w-full h-full hidden md:block">
               <Image
                 width={1200}
@@ -189,8 +189,8 @@ const Register = () => {
                 className="w-full h-full object-cover"
             />
           </div>
-            <div className="container m-auto px-8 py-16">
-                <div className="max-w-2xl mx-auto">
+            <div className="container m-auto px-4 py-16">
+                <div className="max-w-md mx-auto">
                     <GlassCard hover={false}>
                         <div className="text-center mb-8">
                             <h1 className="text-3xl font-bold text-primary mb-2">Créer un compte</h1>

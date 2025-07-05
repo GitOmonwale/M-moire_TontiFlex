@@ -191,19 +191,6 @@ const LoanRequestDetailPage = () => {
                   <Calendar className="mr-2" size={16} />
                   Demandé le {format(new Date(loanRequest.requestDate), 'dd MMM yyyy', { locale: fr })}
                 </div>
-                <div className={`flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  loanRequest.urgency === 'high' ? 'bg-red-100 text-red-700' :
-                  loanRequest.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                    loanRequest.urgency === 'high' ? 'bg-red-500' :
-                    loanRequest.urgency === 'medium' ? 'bg-yellow-500' :
-                    'bg-green-500'
-                  }`}></div>
-                  {loanRequest.urgency === 'high' ? 'Urgente' :
-                   loanRequest.urgency === 'medium' ? 'Normale' : 'Faible'}
-                </div>
               </div>
             </div>
             <div className="flex gap-2">

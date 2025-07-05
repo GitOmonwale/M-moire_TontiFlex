@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_ROUTES, RoleKey } from '@/constants/roles';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface User {
   id: number;
@@ -320,10 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userData = await fetchUserData();
       if (userData) setUser(userData);
-
       const defaultRoute = DEFAULT_ROUTES[data.user_type as RoleKey] || '/';
-         
-        
       setTimeout(() => {
         router.push(defaultRoute);
       }, 2000);
