@@ -1,5 +1,7 @@
 'use client'
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
+import { LucideIcon } from 'lucide-react';
 import { 
   Users, 
   Building2, 
@@ -27,15 +29,57 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-const UserManagement = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+// Types
+type UserRole = 'client' | 'agent_sfd' | 'superviseur_sfd' | 'admin_sfd' | 'admin_platform';
+type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  status: UserStatus;
+  sfd: string;
+  joinDate: string;
+  lastLogin: string;
+  tontines?: number;
+  savings?: number;
+  validatedActions?: number;
+  managedLoans?: number;
+  managedSFD?: string;
+}
+
+interface Stats {
+  totalUsers: number;
+  activeUsers: number;
+  newThisMonth: number;
+  suspendedUsers: number;
+}
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  color?: 'primary' | 'secondary' | 'destructive';
+  trend?: number;
+}
+
+interface UserRowProps {
+  user: User;
+  onSelectUser: (id: number, isSelected: boolean) => void;
+  isSelected: boolean;
+}
+
+const UserManagement = (): React.ReactElement => {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
 
   // Données simulées des utilisateurs
-  const users = [
+  const users: User[] = [
     {
       id: 1,
       name: "Jean Dupont",
@@ -100,14 +144,14 @@ const UserManagement = () => {
     }
   ];
 
-  const stats = {
+  const stats: Stats = {
     totalUsers: 12847,
     activeUsers: 11923,
     newThisMonth: 234,
     suspendedUsers: 45
   };
 
-  const roleLabels = {
+  const roleLabels: Record<UserRole, string> = {
     client: 'Client',
     agent_sfd: 'Agent SFD',
     superviseur_sfd: 'Superviseur SFD',
@@ -115,7 +159,7 @@ const UserManagement = () => {
     admin_platform: 'Admin Plateforme'
   };
 
-  const statusLabels = {
+  const statusLabels: Record<UserStatus, string> = {
     active: 'Actif',
     inactive: 'Inactif',
     suspended: 'Suspendu',
@@ -132,7 +176,7 @@ const UserManagement = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const StatCard = ({ title, value, icon: Icon, color = "primary", trend }) => (
+  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color = "primary", trend }) => (
     <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg">
       <div className="flex items-center justify-between">
         <div>
@@ -151,8 +195,8 @@ const UserManagement = () => {
     </div>
   );
 
-  const UserRow = ({ user }) => {
-    const getStatusBadge = (status) => {
+  const UserRow: React.FC<UserRowProps> = ({ user, onSelectUser, isSelected }) => {
+    const getStatusBadge = (status: UserStatus): React.ReactNode => {
       const styles = {
         active: 'bg-green-100 text-green-800',
         inactive: 'bg-gray-100 text-gray-800',
@@ -167,7 +211,7 @@ const UserManagement = () => {
       );
     };
 
-    const getRoleBadge = (role) => {
+    const getRoleBadge = (role: UserRole): React.ReactNode => {
       const styles = {
         client: 'bg-blue-100 text-blue-800',
         agent_sfd: 'bg-purple-100 text-purple-800',
@@ -424,7 +468,18 @@ const UserManagement = () => {
                 </thead>
                 <tbody className="bg-white/50 divide-y divide-gray-200">
                   {filteredUsers.map((user) => (
-                    <UserRow key={user.id} user={user} />
+                    <UserRow 
+                      key={user.id} 
+                      user={user} 
+                      isSelected={selectedUsers.includes(user.id)}
+                      onSelectUser={(id, isSelected) => {
+                        if (isSelected) {
+                          setSelectedUsers([...selectedUsers, id]);
+                        } else {
+                          setSelectedUsers(selectedUsers.filter(selectedId => selectedId !== id));
+                        }
+                      }}
+                    />
                   ))}
                 </tbody>
               </table>

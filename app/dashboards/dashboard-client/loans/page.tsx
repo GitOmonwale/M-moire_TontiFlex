@@ -1,5 +1,5 @@
 'use client'
-import { JSX, useState } from "react";
+import { JSX, useState, useEffect } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { GlassButton } from "@/components/GlassButton";
 import { Label } from "@/components/ui/label";
@@ -28,12 +28,15 @@ import {
   Users,
   BadgeCheck,
   Flag,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import router from "next/router";
 import Link from "next/link";
+import { useLoans } from "@/hooks/useLoans"; // Ajustez le chemin selon votre structure
+import { MyLoan } from "@/types/loans";
 
 // Types et interfaces
 type LoanStatus = 'Actif' | 'En cours' | 'En attente' | 'Remboursé' | 'Suspendu';
@@ -53,102 +56,67 @@ interface Loan {
   nextPaymentDate: string | null;
 }
 
-
 const MyLoans: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedSfd, setSelectedSfd] = useState<string>("all");
 
-  // Données statiques des prêts
-  const allLoans: Loan[] = [
-    {
-      id: "PRT001234567",
-      sfd: "SFD Porto-Novo",
-      amount: 500000,
-      purpose: "Développement activité commerciale",
-      status: "Actif",
-      startDate: "2024-01-15",
-      endDate: "2025-01-15",
-      monthlyPayment: 45000,
-      remainingAmount: 300000,
-      paidAmount: 200000,
-      interestRate: 8.5,
-      nextPaymentDate: "2025-06-15"
-    },
-    {
-      id: "PRT001234570",
-      sfd: "SFD Cotonou",
-      amount: 300000,
-      purpose: "Extension local commercial",
-      status: "Remboursé",
-      startDate: "2023-01-01",
-      endDate: "2024-01-01",
-      monthlyPayment: 0,
-      remainingAmount: 0,
-      paidAmount: 300000,
-      interestRate: 9.0,
-      nextPaymentDate: null
-    },
-    {
-      id: "PRT001234568",
-      sfd: "SFD Abomey",
-      amount: 200000,
-      purpose: "Achat équipement agricole",
-      status: "En attente",
-      startDate: null,
-      endDate: null,
-      monthlyPayment: 0,
-      remainingAmount: 200000,
-      paidAmount: 0,
-      interestRate: 7.5,
-      nextPaymentDate: null
-    },
-    {
-      id: "PRT001234571",
-      sfd: "SFD Cotonou",
-      amount: 150000,
-      purpose: "Fonds de roulement",
-      status: "Remboursé",
-      startDate: "2023-06-01",
-      endDate: "2024-06-01",
-      monthlyPayment: 0,
-      remainingAmount: 0,
-      paidAmount: 150000,
-      interestRate: 8.0,
-      nextPaymentDate: null
-    }
-  ];
+  // Utilisation du hook useLoans
+  const { myLoans, loading, error, fetchMyLoans } = useLoans();
 
-  // // Statistiques globales
-  // const loanStats: LoanStats = {
-  //   totalLoaned: allLoans.reduce((sum, loan) => sum + loan.amount, 0),
-  //   totalRemaining: allLoans.reduce((sum, loan) => sum + loan.remainingAmount, 0),
-  //   totalPaid: allLoans.reduce((sum, loan) => sum + loan.paidAmount, 0),
-  //   activeLoans: allLoans.filter(loan => loan.status === "Actif" || loan.status === "En cours").length,
-  //   completedLoans: allLoans.filter(loan => loan.status === "Remboursé").length,
-  //   averageRate: allLoans.length > 0 ? allLoans.reduce((sum, loan) => sum + loan.interestRate, 0) / allLoans.length : 0
-  // };
+  // Charger les prêts au montage du composant
+  useEffect(() => {
+    const loadMyLoans = async () => {
+      try {
+        await fetchMyLoans();
+      } catch (err) {
+        console.error('Erreur lors du chargement des prêts:', err);
+      }
+    };
+
+    loadMyLoans();
+  }, []);
+
+  // Fonction pour mapper les statuts de l'API vers les statuts du composant
+  const mapApiStatusToDisplayStatus = (apiStatus: string): LoanStatus => {
+    switch (apiStatus.toLowerCase()) {
+      case 'decaisse':
+      case 'en_remboursement':
+        return 'Actif';
+      case 'accorde':
+      case 'en_attente_decaissement':
+        return 'En attente';
+      case 'solde':
+        return 'Remboursé';
+      case 'en_defaut':
+        return 'Suspendu';
+      default:
+        return 'En attente';
+    }
+  };
+
+  const allLoans = myLoans;
 
   // Liste unique des SFD
-  const sfdList: string[] = Array.from(new Set(allLoans.map(loan => loan.sfd)));
+  const sfdList: string[] = Array.from(new Set(allLoans.map(loan => loan.nom_sfd)));
 
   // Filtrage des prêts
-  const getFilteredLoans = (): Loan[] => {
+  const getFilteredLoans = ():  MyLoan[] => {
     return allLoans.filter(loan => {
       const matchesSearch = loan.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.sfd.toLowerCase().includes(searchTerm.toLowerCase());
+        loan.id_sfd.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        loan.nom_sfd.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesFilter = filterStatus === "all" || 
         loan.status.toLowerCase() === filterStatus.toLowerCase();
       
-      const matchesSfd = selectedSfd === "all" || loan.sfd === selectedSfd;
+      const matchesSfd = selectedSfd === "all" || loan.nom_sfd === selectedSfd;
       
       return matchesSearch && matchesFilter && matchesSfd;
     });
   };
 
-  const filteredLoans: Loan[] = getFilteredLoans();
+  const filteredLoans: MyLoan[] = getFilteredLoans();
 
   const handleNewLoan = (): void => {
     router.push('/dashboards/dashboard-client/loans/new');
@@ -156,6 +124,15 @@ const MyLoans: React.FC = () => {
 
   const handleViewLoan = (loanId: string): void => {
     router.push(`/dashboards/dashboard-client/loans/${loanId}`);
+  };
+
+  const handleRefresh = async (): Promise<void> => {
+    try {
+      await fetchMyLoans();
+      toast.success('Prêts rechargés avec succès');
+    } catch (err) {
+      toast.error('Erreur lors du rechargement des prêts');
+    }
   };
 
   const formatCurrency = (amount: number): string => {
@@ -196,7 +173,7 @@ const MyLoans: React.FC = () => {
 
   // Fonction pour vérifier si une SFD peut accorder un nouveau prêt
   const canRequestNewLoan = (sfdName: string): boolean => {
-    const sfdLoans = allLoans.filter(loan => loan.sfd === sfdName);
+    const sfdLoans = allLoans.filter(loan => loan.nom_sfd === sfdName);
     return !sfdLoans.some(loan => loan.status === "Actif" || loan.status === "En cours");
   };
 
@@ -204,7 +181,7 @@ const MyLoans: React.FC = () => {
   const getActiveLoanSfds = (): string[] => {
     return allLoans
       .filter(loan => loan.status === "Actif" || loan.status === "En cours")
-      .map(loan => loan.sfd);
+      .map(loan => loan.nom_sfd);
   };
 
   const activeLoanSfds = getActiveLoanSfds();
@@ -221,6 +198,44 @@ const MyLoans: React.FC = () => {
     setSelectedSfd(e.target.value);
   };
 
+  // Affichage du loading
+  if (loading && allLoans.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Chargement de vos prêts</h3>
+              <p className="text-gray-600">Veuillez patienter...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Affichage de l'erreur
+  if (error && allLoans.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <GlassCard className="p-8 text-center max-w-md">
+              <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Erreur de chargement</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <GlassButton onClick={handleRefresh} className="flex items-center gap-2">
+                <RefreshCw size={16} />
+                Réessayer
+              </GlassButton>
+            </GlassCard>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -233,7 +248,15 @@ const MyLoans: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
-              <Link href="/dashboards/dashboard-client/saving-accounts">
+              <GlassButton
+                onClick={handleRefresh}
+                className="flex items-center gap-2"
+                disabled={loading}
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                Actualiser
+              </GlassButton>
+              <Link href="/dashboards/dashboard-client/loans/new">
                 <GlassButton
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
@@ -243,6 +266,7 @@ const MyLoans: React.FC = () => {
               </Link>
             </div>
           </div>
+          
           {/* Avertissement discret */}
           <div className="bg-orange-50/80 backdrop-blur-sm border border-orange-200/50 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
@@ -328,7 +352,7 @@ const MyLoans: React.FC = () => {
         {/* Liste des prêts */}
         <div className="space-y-4">
           {filteredLoans.map((loan) => (
-            <GlassCard key={loan.id} className="p-6" hover={false}>
+            <GlassCard key={loan.id_sfd} className="p-6" hover={false}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -337,7 +361,7 @@ const MyLoans: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{loan.purpose}</h3>
-                      <p className="text-sm text-gray-600">{loan.sfd}</p>
+                      <p className="text-sm text-gray-600">{loan.nom_sfd}</p>
                     </div>
                     <div className={cn(
                       "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border",
@@ -347,7 +371,7 @@ const MyLoans: React.FC = () => {
                       {loan.status}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 font-mono mb-3">{loan.id}</p>
+                  <p className="text-sm text-gray-600 font-mono mb-3">{loan.id_sfd}</p>
 
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                     <div>
@@ -404,12 +428,12 @@ const MyLoans: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!canRequestNewLoan(loan.sfd) && (loan.status === "Actif" || loan.status === "En cours") && (
+                  {!canRequestNewLoan(loan.nom_sfd) && (loan.status === "Actif" || loan.status === "En cours") && (
                     <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-full border border-orange-200">
-                      Prêt actif - {loan.sfd}
+                      Prêt actif - {loan.nom_sfd}
                     </span>
                   )}
-                  <Link href={`/dashboards/dashboard-client/loans/${loan.id}`}>
+                  <Link href={`/dashboards/dashboard-client/loans/${loan.id_prêt}`}>
                     <GlassButton
                       size="sm"
                       className="flex items-center gap-2"
@@ -425,7 +449,7 @@ const MyLoans: React.FC = () => {
           ))}
         </div>
 
-        {filteredLoans.length === 0 && (
+        {filteredLoans.length === 0 && !loading && (
           <GlassCard className="p-12 text-center">
             <CreditCard className="mx-auto mb-4 text-gray-400" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun prêt trouvé</h3>
@@ -440,6 +464,16 @@ const MyLoans: React.FC = () => {
               Faire une demande de prêt
             </GlassButton>
           </GlassCard>
+        )}
+
+        {/* Indicateur de chargement pendant le rafraîchissement */}
+        {loading && allLoans.length > 0 && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
+              <Loader2 className="animate-spin text-blue-600" size={16} />
+              <span className="text-sm text-gray-700">Actualisation en cours...</span>
+            </div>
+          </div>
         )}
       </div>
     </div>

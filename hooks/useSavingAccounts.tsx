@@ -637,9 +637,8 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
         }
         throw new Error('Erreur lors du chargement de votre compte épargne');
       }
-      
       const accountData = await response.json();
-      setMyAccount(accountData);
+      setMyAccount(accountData.accounts);
       return accountData;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';

@@ -38,7 +38,7 @@ type SFDValue = 'clcam' | 'coopec' | 'fescoop' | 'vital_finance' | 'padme';
 
 type DocumentType = 'idCard' | 'photo' | 'certification';
 
-interface Documents {
+type Documents = {
   [key in DocumentType]: File | null;
 }
 

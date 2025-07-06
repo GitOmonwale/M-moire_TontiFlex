@@ -277,7 +277,7 @@ const SFDManagement: React.FC = () => {
   );
 
   const SFDCard: React.FC<SFDCardProps> = ({ sfd, onViewDetails }) => {
-    const getStatusBadge = (status: SFDStatus): JSX.Element => {
+    const getStatusBadge = (status: SFDStatus): React.ReactElement => {
       const styles: Record<SFDStatus, string> = {
         active: 'bg-green-100 text-green-800',
         pending: 'bg-yellow-100 text-yellow-800',
@@ -292,8 +292,8 @@ const SFDManagement: React.FC = () => {
       );
     };
 
-    const getStatusIcon = (status: SFDStatus): JSX.Element => {
-      const icons: Record<SFDStatus, JSX.Element> = {
+    const getStatusIcon = (status: SFDStatus): React.ReactElement => {
+      const icons: Record<SFDStatus, React.ReactElement> = {
         active: <CheckCircle className="w-4 h-4 text-green-500" />,
         pending: <Clock className="w-4 h-4 text-yellow-500" />,
         suspended: <XCircle className="w-4 h-4 text-red-500" />,
