@@ -371,7 +371,6 @@ export function useAdhesions(): useAdhesionsResults {
     setError(null);
     try {
       const formData = new FormData();
-      
       if (validateData.commentaires) {
         formData.append('commentaires', validateData.commentaires);
       }
@@ -399,12 +398,10 @@ export function useAdhesions(): useAdhesionsResults {
         prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
       );
       setAdhesion(updatedAdhesion);
-      toast.success('Demande d\'adhésion validée avec succès');
       return updatedAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);

@@ -28,6 +28,7 @@ export interface SidebarItem {
   link: string;
   description?: string;
   badge?: number;
+  items?: SidebarItem[];
 }
 
 export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
@@ -44,7 +45,37 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       label: 'Gestion utilisateurs',
       icon: Users,
       link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
-      description: 'Gestion des utilisateurs'
+      description: 'Gestion des utilisateurs',
+      items: [
+        {
+          id: 1,
+          label: 'Clients SFD',
+          icon: Users,
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          description: 'Gestion des utilisateurs'
+        },
+        {
+          id: 2,
+          label: 'Agents SFD',
+          icon: Users,
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          description: 'Gestion des utilisateurs'
+        },
+        {
+          id: 3,
+          label: 'Superviseurs SFD',
+          icon: Users,
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          description: 'Gestion des utilisateurs'
+        },
+        {
+          id: 4,
+          label: 'Admins plateforme',
+          icon: Users,
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          description: 'Gestion des utilisateurs'
+        }
+      ]
     },
     {
       id: 3,
@@ -129,34 +160,27 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
     },
     {
       id: 2,
-      label: 'Adhésions',
-      icon: Users,
-      link: '/dashboards/dashboard-client/membership-requests',
-      description: 'Gérer vos demandes d\'adhésion'
-    },
-    {
-      id: 3,
       label: 'Tontines',
       icon: Users,
       link: '/dashboards/dashboard-client/my-tontines',
       description: 'Gérer vos tontines'
     },
     {
-      id: 4,
+      id: 3,
       label: 'Compte Courant',
       icon: PiggyBank,
       link: '/dashboards/dashboard-client/saving-accounts',
       description: 'Gérer vos comptes courants'
     },
     {
-      id: 5,
+      id: 3,
       label: 'Prêts',
       icon: PiggyBank,
       link: '/dashboards/dashboard-client/loans',
       description: 'Gérer vos prêts'
     },
     {
-      id: 6,
+      id: 4,
       label: 'Historiques',
       icon: FileText,
       link: '/dashboards/dashboard-client/operations-history',

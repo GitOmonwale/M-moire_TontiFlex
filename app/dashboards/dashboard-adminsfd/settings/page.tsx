@@ -109,7 +109,7 @@ const SettingsPage = () => {
     moovMoneyActif: true,
     apiKeyMTN: 'mtn_****_****_****',
     apiKeyMoov: 'moov_****_****_****',
-    webhookUrl: 'https://api.sfdportionovo.bj/webhook',
+    webhookUrl: 'https://api.tontiflexapp.onrender.com/api/payments/webhook',
     passerelleSSMS: 'provider_xyz',
     formatSMS: 'TontiFlex: {message}. Infos: {telephone}',
     langueDefaut: 'français'

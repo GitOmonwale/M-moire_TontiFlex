@@ -31,7 +31,7 @@ import {
   Mail,
   LucideIcon
 } from 'lucide-react';
-
+import Link from 'next/link';
 // Types et interfaces
 type SFDStatus = 'active' | 'pending' | 'suspended' | 'maintenance';
 
@@ -98,7 +98,6 @@ const SFDManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
-  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [selectedSFD, setSelectedSFD] = useState<SFD | null>(null);
 
   // Données simulées des SFD
@@ -564,13 +563,14 @@ const SFDManagement: React.FC = () => {
                   <Download className="w-4 h-4" />
                   <span className="font-archivo text-sm">Rapport</span>
                 </button>
+                <Link href="/dashboards/dashboard-admin_tontiflex/sfd/new-sfd">
                 <button 
-                  onClick={() => setShowCreateModal(true)}
                   className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   <span className="font-archivo text-sm">Nouveau SFD</span>
                 </button>
+                </Link>
               </div>
             </div>
           </div>

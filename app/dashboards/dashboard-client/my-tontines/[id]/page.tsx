@@ -70,7 +70,6 @@ const TontineDetailsPage = () => {
     const handlePaymentSuccess = async (kkiapayResponse: any, cotisationData: any) => {
         try {
             console.log('🎉 Paiement réussi, confirmation en cours...', kkiapayResponse);
-
             // Confirmer le paiement auprès du backend
             await confirmPayment({
                 kkiapay_transaction_id: kkiapayResponse.transactionId,
@@ -515,4 +514,4 @@ const TontineDetailsPage = () => {
         );
     };
 
-export default TontineDetailsPage;
+export default TontineDetailsPage

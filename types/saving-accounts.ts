@@ -11,30 +11,46 @@ export type SavingsAccountStatus =
 export type TransactionType = 'depot' | 'retrait' | 'frais';
 export type TransactionStatus = 'confirmee' | 'en_cours' | 'echouee';
 
-export interface SavingsAccount {
-  id: string; // UUID, readOnly
-  client_nom: string; // readOnly
-  agent_nom: string; // readOnly
-  sfd_nom: string; // readOnly
-  solde_disponible: string; // readOnly
-  prochaine_action: string; // readOnly
-  statut: SavingsAccountStatus;
-  piece_identite: string; // URI
-  photo_identite: string; // URI
-  numero_telephone_paiement: string | null; // nullable, maxLength: 15
-  frais_creation: string | null; // decimal, nullable
-  date_demande: string; // datetime
-  date_validation_agent: string | null; // datetime, nullable
-  date_paiement_frais: string | null; // datetime, nullable
-  date_activation: string | null; // datetime, nullable
-  date_modification: string; // datetime, readOnly
-  commentaires_agent: string | null; // nullable, maxLength: 1000
-  raison_rejet: string | null; // nullable, maxLength: 500
-  client: string; // UUID
-  sfd_choisie: string | null; // nullable
-  agent_validateur: string | null; // UUID, nullable
-  transaction_frais_creation: string | null; // UUID, nullable
+interface TransactionRecente {
+  id: string;
+  type_transaction: string;
+  type_display: string;
+  montant: string; // Peut être number si converti
+  statut: string;
+  statut_display: string;
+  date_transaction: string; // ISO date
+  date_confirmation: string | null; // Peut être null
+  operateur: string | null;
+  commentaires: string;
 }
+
+export interface SavingsAccount {
+  idAdherents: string;
+  sfdName: string;
+  accountNumber: string;
+  solde: number;
+  dateCreation: string;
+  statut: string;
+  totalDepose: number;
+  totalRetire: number;
+  nombreTransactions: number;
+  eligibiliteCredit: boolean;
+  derniereMouvement: string;
+  id: string;
+  client_nom: string;
+  agent_nom: string;
+  transactions_recentes: TransactionRecente[];
+  piece_identite: string;
+  photo_identite: string;
+  numero_telephone_paiement: string;
+  frais_creation: number | null;
+  date_validation_agent: string;
+  date_paiement_frais: string;
+  date_activation: string;
+  commentaires_agent: string;
+  raison_rejet: string | null;
+}
+
 
 export interface CreateSavingsAccountData {
   statut?: SavingsAccountStatus;
@@ -162,7 +178,7 @@ export interface PaginatedSFDSelectionList {
   count: number;
   next: string | null;
   previous: string | null;
-  results: SFDSelection[];
+  sfds: SFDSelection[];
 }
 
 export interface SavingsAccountFilters {

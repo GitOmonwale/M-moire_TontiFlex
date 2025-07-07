@@ -44,30 +44,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import WithdrawalForm from '@/components/forms/WithdrawalForm';
 import DepositForm from '@/components/forms/DepositForm';
-
-// Types (réutilisés de la page overview)
-interface SavingsAccount {
-  id: string;
-  sfdName: string;
-  sfdLogo: string;
-  accountNumber: string;
-  solde: number;
-  dateCreation: string;
-  statut: 'actif' | 'en_cours_creation' | 'suspendu';
-  totalDepose: number;
-  totalRetire: number;
-  nombreTransactions: number;
-  eligibiliteCredit: boolean;
-  derniereMouvement: string;
-  sfdDetails: {
-    adresse: string;
-    telephone: string;
-  };
-  documentsRequis: {
-    pieceIdentite: { uploaded: boolean; dateUpload?: string };
-    photoIdentite: { uploaded: boolean; dateUpload?: string };
-  };
-}
+import { useSavingsAccounts } from '@/hooks/useSavingAccounts';
 
 interface Transaction {
   id: string;
@@ -86,105 +63,7 @@ interface Transaction {
   notes?: string;
 }
 
-// Mock data pour un compte spécifique
-const mockSavingsAccount: SavingsAccount = {
-  id: 'ep_001',
-  sfdName: 'FINADEV',
-  sfdLogo: '/logos/finadev.png',
-  accountNumber: 'FD-EP-240001',
-  solde: 125000,
-  dateCreation: '2024-03-15T00:00:00Z',
-  statut: 'actif',
-  totalDepose: 150000,
-  totalRetire: 28250,
-  nombreTransactions: 24,
-  eligibiliteCredit: true,
-  derniereMouvement: '2025-06-15T14:30:00Z',
-  sfdDetails: {
-    adresse: '123 Avenue de la République, Cotonou',
-    telephone: '+229 21 30 45 67',
-  },
-  documentsRequis: {
-    pieceIdentite: { uploaded: true, dateUpload: '2024-03-15T10:00:00Z' },
-    photoIdentite: { uploaded: true, dateUpload: '2024-03-15T10:05:00Z' }
-  }
-};
 
-const mockTransactionHistory: Transaction[] = [
-  {
-    id: 'tx_001',
-    accountId: 'ep_001',
-    type: 'depot',
-    montant: 15000,
-    date: '2025-06-15T14:30:00Z',
-    description: 'Dépôt Mobile Money MTN',
-    reference: 'TF-DEP-150625',
-    methodePaiement: 'mtn_money',
-    numeroMobileMoney: '*****4587',
-    statut: 'confirme',
-    frais: 25,
-    soldeAvant: 110000,
-    soldeApres: 125000,
-    notes: 'Dépôt automatique depuis MTN Money'
-  },
-  {
-    id: 'tx_002',
-    accountId: 'ep_001',
-    type: 'retrait',
-    montant: 10000,
-    date: '2025-06-10T09:15:00Z',
-    description: 'Retrait pour urgence familiale',
-    reference: 'TF-RET-100625',
-    methodePaiement: 'moov_money',
-    numeroMobileMoney: '*****7829',
-    statut: 'confirme',
-    frais: 150,
-    soldeAvant: 120000,
-    soldeApres: 110000,
-    notes: 'Retrait approuvé par agent HASSAN'
-  },
-  {
-    id: 'tx_003',
-    accountId: 'ep_001',
-    type: 'depot',
-    montant: 520,
-    date: '2025-06-01T00:00:00Z',
-    description: 'Intérêts mensuels - Mai 2025',
-    reference: 'TF-INT-010625',
-    statut: 'confirme',
-    soldeAvant: 119480,
-    soldeApres: 120000,
-    notes: 'Calcul automatique 5.5% annuel'
-  },
-  {
-    id: 'tx_004',
-    accountId: 'ep_001',
-    type: 'depot',
-    montant: 25000,
-    date: '2025-05-28T16:45:00Z',
-    description: 'Dépôt mensuel mai',
-    reference: 'TF-DEP-280525',
-    methodePaiement: 'mtn_money',
-    numeroMobileMoney: '*****4587',
-    statut: 'confirme',
-    frais: 25,
-    soldeAvant: 94480,
-    soldeApres: 119480
-  },
-  {
-    id: 'tx_005',
-    accountId: 'ep_001',
-    type: 'frais',
-    montant: 500,
-    date: '2025-05-15T12:00:00Z',
-    description: 'Frais de tenue de compte',
-    reference: 'TF-FEE-150525',
-    statut: 'confirme',
-    soldeAvant: 94980,
-    soldeApres: 94480,
-    notes: 'Frais trimestriels FINADEV'
-  }
-];
 
 const SavingsAccountDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -192,13 +71,39 @@ const SavingsAccountDetails = () => {
 
   // For debugging - will show in browser console
   console.log('Current savings account ID:', id);
-  const [account, setAccount] = useState<SavingsAccount>(mockSavingsAccount);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactionHistory);
+  const { savingsAccount, fetchSavingsAccountById } = useSavingsAccounts();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<'tous' | 'depot' | 'retrait'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loadAccount = async () => {
+      await fetchSavingsAccountById(id);
+    };
+    loadAccount();
+  }, [id]);
+
+  useEffect(() => {
+    if (savingsAccount?.transactions_recentes) {
+      const formattedTransactions: Transaction[] = savingsAccount.transactions_recentes.map(tx => ({
+        id: tx.id,
+        accountId: id as string,
+        type: tx.type_transaction.toLowerCase() as 'depot' | 'retrait' | 'frais',
+        montant: parseFloat(tx.montant),
+        date: tx.date_transaction,
+        description: tx.commentaires || tx.type_display,
+        reference: tx.id,
+        statut: tx.statut as 'confirme' | 'en_attente' | 'rejete',
+        soldeAvant: 0, // Ces valeurs devront peut-être être fournies par l'API
+        soldeApres: 0,  // Ces valeurs devront peut-être être fournies par l'API
+        notes: tx.commentaires
+      }));
+      setTransactions(formattedTransactions);
+    }
+  }, [savingsAccount, id]);
 
   const handleWithdraw = async (withdrawData: any) => {
     try {
@@ -249,11 +154,20 @@ const SavingsAccountDetails = () => {
     }
   };
 
+
+
   // Calculs statistiques
-  const monthsActive = differenceInMonths(new Date(), new Date(account.dateCreation));
-  const averageMonthlyDeposit = account.totalDepose / Math.max(monthsActive, 1);
-  const netGrowth = account.totalDepose - account.totalRetire;
-  const growthPercentage = ((netGrowth / account.totalDepose) * 100).toFixed(1);
+  const creationDate = savingsAccount?.dateCreation ? new Date(savingsAccount.dateCreation) : new Date();
+  const monthsActive = differenceInMonths(new Date(), creationDate);
+  
+  const totalDepose = savingsAccount?.totalDepose ? Number(savingsAccount.totalDepose) : 0;
+  const totalRetire = savingsAccount?.totalRetire ? Number(savingsAccount.totalRetire) : 0;
+  
+  const averageMonthlyDeposit = totalDepose / Math.max(monthsActive, 1);
+  const netGrowth = totalDepose - totalRetire;
+  const growthPercentage = totalDepose > 0 ? 
+    ((netGrowth / totalDepose) * 100).toFixed(1) : 
+    '0.0';
 
   // Filtrage des transactions
   const filteredTransactions = transactions.filter(transaction => {
@@ -302,12 +216,12 @@ const SavingsAccountDetails = () => {
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Compte Courant</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">{savingsAccount?.accountNumber}</h1>
             <div className="flex items-center gap-4">
-              <span className="text-lg font-medium text-gray-600">{account.accountNumber}</span>
+              <span className="text-lg font-medium text-gray-600">{savingsAccount?.accountNumber}</span>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-500">Dernière activité: {format(new Date(account.derniereMouvement), 'dd/MM/yyyy', { locale: fr })}</span>
+                <span className="text-sm text-gray-500">Dernière activité: {savingsAccount?.derniereMouvement ? format(new Date(savingsAccount.derniereMouvement), 'dd/MM/yyyy', { locale: fr }) : 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -326,15 +240,15 @@ const SavingsAccountDetails = () => {
                     <PiggyBank className="text-white" size={24} />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-lg font-semibold text-gray-900">{account.sfdName}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{savingsAccount?.sfdName}</h3>
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "px-3 py-1 text-xs font-medium rounded-full border",
-                        account.statut === 'actif' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        savingsAccount?.statut === 'actif' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
                       )}>
-                        {account.statut === 'actif' ? 'Actif' : 'En cours'}
+                        {savingsAccount?.statut === 'actif' ? 'Actif' : 'En cours'}
                       </span>
-                      {account.eligibiliteCredit && (
+                      {savingsAccount?.eligibiliteCredit && (
                         <span className="px-3 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 border border-purple-200">
                           <Award size={12} className="inline mr-1" />
                           Éligible crédit
@@ -347,13 +261,13 @@ const SavingsAccountDetails = () => {
                 <div className="mb-6">
                   <p className="text-sm font-medium text-gray-600 mb-2">Solde disponible</p>
                   <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-                    {account.solde.toLocaleString()}
+                    {savingsAccount?.solde.toLocaleString()}
                   </p>
                   <p className="text-lg text-gray-500">FCFA</p>
                 </div>
 
                 {/* Actions rapides */}
-                {account.statut === 'actif' && (
+                {savingsAccount?.statut === 'actif' && (
                   <div className="grid grid-cols-2 gap-3">
                     <GlassButton
                       onClick={() => setIsDepositModalOpen(true)}
@@ -387,7 +301,7 @@ const SavingsAccountDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total déposé</p>
-                    <p className="text-2xl font-bold text-green-600">{account.totalDepose.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-green-600">{savingsAccount?.totalDepose.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
                 </div>
@@ -401,7 +315,7 @@ const SavingsAccountDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total retiré</p>
-                    <p className="text-2xl font-bold text-red-600">{account.totalRetire.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-red-600">{savingsAccount?.totalRetire.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
                 </div>
@@ -415,7 +329,7 @@ const SavingsAccountDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Transactions</p>
-                    <p className="text-2xl font-bold text-blue-600">{account.nombreTransactions}</p>
+                    <p className="text-2xl font-bold text-blue-600">{savingsAccount?.nombreTransactions}</p>
                     <p className="text-xs text-gray-500">Total</p>
                   </div>
                 </div>
@@ -429,7 +343,7 @@ const SavingsAccountDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Solde actuel</p>
-                    <p className="text-2xl font-bold text-purple-600">{account.solde.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-purple-600">{savingsAccount?.solde.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">FCFA</p>
                   </div>
                 </div>
@@ -555,7 +469,12 @@ const SavingsAccountDetails = () => {
               </div>
 
               {/* État vide */}
-              {filteredTransactions.length === 0 && (
+              {!savingsAccount?.transactions_recentes ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg font-medium text-gray-900 mb-2">Chargement des transactions...</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <FileText className="text-gray-400" size={32} />
@@ -563,7 +482,7 @@ const SavingsAccountDetails = () => {
                   <p className="text-lg font-medium text-gray-900 mb-2">Aucune transaction trouvée</p>
                   <p className="text-gray-500">Modifiez les filtres de recherche pour voir plus de résultats</p>
                 </div>
-              )}
+              ) : null}
             </GlassCard>
           </div>
 
@@ -575,7 +494,7 @@ const SavingsAccountDetails = () => {
               <div className="flex items-center gap-3 mb-4">
                 <div className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center",
-                  account.eligibiliteCredit ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white" : "bg-gray-100 text-gray-600"
+                  savingsAccount?.eligibiliteCredit ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white" : "bg-gray-100 text-gray-600"
                 )}>
                   <CreditCard size={20} />
                 </div>
@@ -583,14 +502,14 @@ const SavingsAccountDetails = () => {
                   <h3 className="font-semibold text-gray-900">Éligibilité crédit</h3>
                   <p className={cn(
                     "text-sm font-medium",
-                    account.eligibiliteCredit ? "text-purple-600" : "text-gray-500"
+                    savingsAccount?.eligibiliteCredit ? "text-purple-600" : "text-gray-500"
                   )}>
-                    {account.eligibiliteCredit ? 'Éligible' : 'Non éligible'}
+                    {savingsAccount?.eligibiliteCredit ? 'Éligible' : 'Non éligible'}
                   </p>
                 </div>
               </div>
 
-              {account.eligibiliteCredit ? (
+              {savingsAccount?.eligibiliteCredit ? (
                 <div>
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-purple-800 mb-2">
@@ -648,7 +567,7 @@ const SavingsAccountDetails = () => {
               <WithdrawalForm
                 isOpen={isWithdrawalModalOpen}
                 onClose={() => setIsWithdrawalModalOpen(false)}
-                details={account}
+                details={savingsAccount}
                 loading={loading}
                 onSubmit={handleWithdraw}
               />
@@ -669,7 +588,7 @@ const SavingsAccountDetails = () => {
               <DepositForm
                 isOpen={isDepositModalOpen}
                 onClose={() => setIsDepositModalOpen(false)}
-                details={account}
+                details={savingsAccount}
                 loading={loading}
                 onSubmit={handleDeposit}
               />

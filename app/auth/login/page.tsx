@@ -51,14 +51,16 @@ const Login = () => {
   };
 
   return (
-    <div className="h-screen items-center grid grid-cols-2">
-      <Image
-        width={1200}
-        height={1000}
-        src="/images/img-6.jpeg"
-        alt="Login illustration"
+    <div className="h-screen items-center grid md:grid-cols-2 grid-cols-1">
+      <div className="w-full h-full hidden md:block">
+        <Image
+          width={1200}
+          height={1000}
+          src="/images/img-6.jpeg"
+          alt="Login illustration"
         className="w-full h-full object-cover"
       />
+      </div>
       <div className="container m-auto px-4 py-16">
         <div className="max-w-md mx-auto">
           <GlassCard hover={false}>

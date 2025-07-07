@@ -1,3 +1,4 @@
+'use client'
 import React, { useState } from 'react';
 import { 
   Users, 
@@ -24,12 +25,11 @@ import {
   Shield,
   Upload,
   FileText,
-  RefreshCw,
-  LucideIcon
+  RefreshCw
 } from 'lucide-react';
 
 // Types et interfaces
-type UserRole = 'client' | 'agent_sfd' | 'superviseur_sfd' | 'admin_sfd' | 'admin_platform';
+type UserRole = 'agent_sfd' | 'superviseur_sfd' | 'admin_sfd' | 'admin_platform';
 
 type Region = 'Alibori' | 'Atacora' | 'Atlantique' | 'Borgou' | 'Collines' |
               'Couffo' | 'Donga' | 'Littoral' | 'Mono' | 'Ouémé' | 'Plateau' | 'Zou';
@@ -59,13 +59,6 @@ interface FormData {
   password: string;
   confirmPassword: string;
   
-  // Options
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  sendWelcomeEmail: boolean;
-  sendWelcomeSMS: boolean;
-  requirePasswordChange: boolean;
-  
   // Documents (pour certains rôles)
   documents: Documents;
   
@@ -88,7 +81,7 @@ interface RoleDefinition {
   value: UserRole;
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: any;
   color: string;
   requiresSFD: boolean;
   requiresDocuments: boolean;
@@ -107,11 +100,11 @@ interface RegionOption {
 interface Step {
   id: number;
   title: string;
-  icon: LucideIcon;
+  icon: any;
 }
 
 interface NavItem {
-  icon: LucideIcon;
+  icon: any;
   label: string;
   active?: boolean;
 }
@@ -130,7 +123,7 @@ interface InputFieldProps {
   placeholder?: string;
   error?: string;
   required?: boolean;
-  icon?: LucideIcon;
+  icon?: any;
   validation?: {
     isValid: boolean;
     message: string;
@@ -144,7 +137,7 @@ interface SelectFieldProps {
   options: Array<{ value: string; label: string }>;
   error?: string;
   required?: boolean;
-  icon?: LucideIcon;
+  icon?: any;
 }
 
 interface TextAreaFieldProps {
@@ -195,19 +188,10 @@ const CreateUser: React.FC = () => {
     profession: '',
     
     // Informations de compte
-    role: 'client',
+    role: 'agent_sfd',
     sfd: '',
     password: '',
     confirmPassword: '',
-    
-    // Options
-    emailVerified: false,
-    phoneVerified: false,
-    sendWelcomeEmail: true,
-    sendWelcomeSMS: true,
-    requirePasswordChange: true,
-    
-    // Documents (pour certains rôles)
     documents: {
       idCard: null,
       photo: null,
@@ -221,16 +205,8 @@ const CreateUser: React.FC = () => {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({});
 
+  // Configuration des rôles
   const roles: RoleDefinition[] = [
-    { 
-      value: 'client', 
-      label: 'Client', 
-      description: 'Utilisateur standard qui peut rejoindre des tontines et gérer son épargne',
-      icon: User,
-      color: 'blue',
-      requiresSFD: false,
-      requiresDocuments: false
-    },
     { 
       value: 'agent_sfd', 
       label: 'Agent SFD', 
@@ -294,26 +270,19 @@ const CreateUser: React.FC = () => {
     { id: 3, title: 'Configuration', icon: Settings }
   ];
 
-  const navItems: NavItem[] = [
-    { icon: Activity, label: 'Vue d\'ensemble' },
-    { icon: Users, label: 'Gestion utilisateurs', active: true },
-    { icon: Building2, label: 'Gestion SFD' },
-    { icon: TrendingUp, label: 'Analytics' },
-    { icon: Database, label: 'Logs & Audit' },
-    { icon: Globe, label: 'Intégrations' },
-    { icon: Settings, label: 'Paramètres' },
-  ];
-
-  const updateField = <K extends keyof FormData>(field: K, value: FormData[K]): void => {
+  // Fonction pour gérer les changements dans le formulaire
+  const handleChange = (field: keyof FormData, value: any): void => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Clear error for this field
-    if (errors[field as string]) {
-      setErrors(prev => ({ ...prev, [field as string]: '' }));
+    // Validation en temps réel pour certains champs
+    if (['email', 'phone', 'password', 'confirmPassword'].includes(field)) {
+      validateField(field, value);
     }
     
-    // Real-time validation
-    validateField(field as string, value);
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
   const validateField = (field: string, value: any): void => {
@@ -391,6 +360,7 @@ const CreateUser: React.FC = () => {
     setIsSubmitting(true);
     
     // Simulation de création
+    console.log('Données du formulaire:', formData);
     setTimeout(() => {
       setIsSubmitting(false);
       alert('Utilisateur créé avec succès !');
@@ -399,8 +369,7 @@ const CreateUser: React.FC = () => {
 
   const getSelectedRole = (): RoleDefinition | undefined => roles.find(r => r.value === formData.role);
 
-  const handleStringChange = (value: string): string => value;
-
+  // Composants de formulaire
   const InputField: React.FC<InputFieldProps> = ({ 
     label, 
     type = "text", 
@@ -413,20 +382,20 @@ const CreateUser: React.FC = () => {
     validation
   }) => (
     <div className="space-y-2">
-      <label className="block text-sm font-archivo font-medium text-foreground">
+      <label className="block text-sm font-medium text-gray-700">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <div className="relative">
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         )}
         <input
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2 bg-white border rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+          className={`w-full ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
             error ? 'border-red-300' : validation?.isValid === false ? 'border-red-300' : validation?.isValid ? 'border-green-300' : 'border-gray-200'
           }`}
         />
@@ -441,10 +410,10 @@ const CreateUser: React.FC = () => {
         )}
       </div>
       {error && (
-        <p className="text-xs font-archivo text-red-600">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
       {validation?.message && !error && (
-        <p className={`text-xs font-archivo ${validation.isValid ? 'text-green-600' : 'text-red-600'}`}>
+        <p className={`text-xs ${validation.isValid ? 'text-green-600' : 'text-red-600'}`}>
           {validation.message}
         </p>
       )}
@@ -453,18 +422,18 @@ const CreateUser: React.FC = () => {
 
   const SelectField: React.FC<SelectFieldProps> = ({ label, value, onChange, options, error, required = false, icon: Icon }) => (
     <div className="space-y-2">
-      <label className="block text-sm font-archivo font-medium text-foreground">
+      <label className="block text-sm font-medium text-gray-700">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <div className="relative">
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         )}
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2 bg-white border rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+          className={`w-full ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
             error ? 'border-red-300' : 'border-gray-200'
           }`}
         >
@@ -477,14 +446,14 @@ const CreateUser: React.FC = () => {
         </select>
       </div>
       {error && (
-        <p className="text-xs font-archivo text-red-600">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
     </div>
   );
 
   const TextAreaField: React.FC<TextAreaFieldProps> = ({ label, value, onChange, placeholder, rows = 3, error }) => (
     <div className="space-y-2">
-      <label className="block text-sm font-archivo font-medium text-foreground">
+      <label className="block text-sm font-medium text-gray-700">
         {label}
       </label>
       <textarea
@@ -492,30 +461,30 @@ const CreateUser: React.FC = () => {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className={`w-full px-3 py-2 bg-white border rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+        className={`w-full px-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
           error ? 'border-red-300' : 'border-gray-200'
         }`}
       />
       {error && (
-        <p className="text-xs font-archivo text-red-600">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
     </div>
   );
 
   const PasswordField: React.FC<PasswordFieldProps> = ({ label, value, onChange, placeholder, error, required, show, onToggle, validation }) => (
     <div className="space-y-2">
-      <label className="block text-sm font-archivo font-medium text-foreground">
+      <label className="block text-sm font-medium text-gray-700">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type={show ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full pl-10 pr-10 py-2 bg-white border rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+          className={`w-full pl-10 pr-10 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
             error ? 'border-red-300' : validation?.isValid === false ? 'border-red-300' : validation?.isValid ? 'border-green-300' : 'border-gray-200'
           }`}
         />
@@ -524,14 +493,14 @@ const CreateUser: React.FC = () => {
           onClick={onToggle}
           className="absolute right-3 top-1/2 transform -translate-y-1/2"
         >
-          {show ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+          {show ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
         </button>
       </div>
       {error && (
-        <p className="text-xs font-archivo text-red-600">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
       {validation?.message && !error && (
-        <p className={`text-xs font-archivo ${validation.isValid ? 'text-green-600' : 'text-red-600'}`}>
+        <p className={`text-xs ${validation.isValid ? 'text-green-600' : 'text-red-600'}`}>
           {validation.message}
         </p>
       )}
@@ -540,31 +509,29 @@ const CreateUser: React.FC = () => {
 
   const RoleCard: React.FC<RoleCardProps> = ({ role, selected, onClick }) => {
     const Icon = role.icon;
-    const colorClass = `text-${role.color}-500`;
-    const bgClass = `bg-${role.color}-100`;
     
     return (
       <div
         onClick={onClick}
         className={`border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-          selected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+          selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
         }`}
       >
         <div className="flex items-start space-x-3">
-          <div className={`p-2 rounded-lg ${selected ? 'bg-primary/10' : bgClass}`}>
-            <Icon className={`w-5 h-5 ${selected ? 'text-primary' : colorClass}`} />
+          <div className={`p-2 rounded-lg ${selected ? 'bg-blue-100' : 'bg-gray-100'}`}>
+            <Icon className={`w-5 h-5 ${selected ? 'text-blue-600' : 'text-gray-600'}`} />
           </div>
           <div className="flex-1">
-            <h4 className="font-archivo font-medium text-foreground">{role.label}</h4>
-            <p className="font-archivo text-xs text-muted-foreground mt-1">{role.description}</p>
+            <h4 className="font-medium text-gray-900">{role.label}</h4>
+            <p className="text-xs text-gray-600 mt-1">{role.description}</p>
             <div className="flex items-center space-x-4 mt-2">
               {role.requiresSFD && (
-                <span className="text-xs font-archivo text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
                   Requiert SFD
                 </span>
               )}
               {role.requiresDocuments && (
-                <span className="text-xs font-archivo text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                   Documents requis
                 </span>
               )}
@@ -575,14 +542,15 @@ const CreateUser: React.FC = () => {
     );
   };
 
+  // Étapes du formulaire
   const Step1: React.FC = () => (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center space-x-2 mb-2">
           <Info className="w-4 h-4 text-blue-600" />
-          <p className="font-archivo text-sm font-medium text-blue-800">Informations personnelles</p>
+          <p className="text-sm font-medium text-blue-800">Informations personnelles</p>
         </div>
-        <p className="font-archivo text-xs text-blue-600">
+        <p className="text-xs text-blue-600">
           Saisissez les informations personnelles du nouvel utilisateur
         </p>
       </div>
@@ -591,7 +559,7 @@ const CreateUser: React.FC = () => {
         <InputField
           label="Prénom"
           value={formData.firstName}
-          onChange={(value) => updateField('firstName', value)}
+          onChange={(value) => handleChange("firstName", value)}
           placeholder="Jean"
           error={errors.firstName}
           required
@@ -600,7 +568,7 @@ const CreateUser: React.FC = () => {
         <InputField
           label="Nom"
           value={formData.lastName}
-          onChange={(value) => updateField('lastName', value)}
+          onChange={(value) => handleChange("lastName", value)}
           placeholder="Dupont"
           error={errors.lastName}
           required
@@ -610,7 +578,7 @@ const CreateUser: React.FC = () => {
           label="Email"
           type="email"
           value={formData.email}
-          onChange={(value) => updateField('email', value)}
+          onChange={(value) => handleChange("email", value)}
           placeholder="jean.dupont@email.com"
           error={errors.email}
           icon={Mail}
@@ -620,7 +588,7 @@ const CreateUser: React.FC = () => {
           label="Téléphone"
           type="tel"
           value={formData.phone}
-          onChange={(value) => updateField('phone', value)}
+          onChange={(value) => handleChange("phone", value)}
           placeholder="+229 97 12 34 56"
           error={errors.phone}
           required
@@ -630,30 +598,29 @@ const CreateUser: React.FC = () => {
         <InputField
           label="Adresse"
           value={formData.address}
-          onChange={(value) => updateField('address', value)}
+          onChange={(value) => handleChange("address", value)}
           placeholder="Cotonou, Akpakpa, Rue des Palmiers"
           error={errors.address}
           required
           icon={MapPin}
         />
-        <InputField
-          label="Ville"
-          value={formData.city}
-          onChange={(value) => updateField('city', value)}
-          placeholder="Cotonou"
-          icon={MapPin}
-        />
         <SelectField
           label="Région"
           value={formData.region}
-          onChange={(value) => updateField('region', value as Region)}
+          onChange={(value) => handleChange("region", value)}
           options={regions.map(region => ({ value: region, label: region }))}
           icon={MapPin}
         />
         <InputField
+          label="Ville"
+          value={formData.city}
+          onChange={(value) => handleChange("city", value)}
+          placeholder="Cotonou"
+        />
+        <InputField
           label="Profession"
           value={formData.profession}
-          onChange={(value) => updateField('profession', value)}
+          onChange={(value) => handleChange("profession", value)}
           placeholder="Commerçant"
         />
       </div>
@@ -668,27 +635,27 @@ const CreateUser: React.FC = () => {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center space-x-2 mb-2">
             <Shield className="w-4 h-4 text-green-600" />
-            <p className="font-archivo text-sm font-medium text-green-800">Rôle et accès</p>
+            <p className="text-sm font-medium text-green-800">Rôle et accès</p>
           </div>
-          <p className="font-archivo text-xs text-green-600">
+          <p className="text-xs text-green-600">
             Définissez le rôle et les permissions de l'utilisateur
           </p>
         </div>
 
         <div>
-          <h3 className="text-lg font-chillax font-semibold text-foreground mb-4">Sélectionnez un rôle</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sélectionnez un rôle</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {roles.map((role) => (
               <RoleCard
                 key={role.value}
                 role={role}
                 selected={formData.role === role.value}
-                onClick={() => updateField('role', role.value)}
+                onClick={() => handleChange("role", role.value)}
               />
             ))}
           </div>
           {errors.role && (
-            <p className="text-xs font-archivo text-red-600 mt-2">{errors.role}</p>
+            <p className="text-xs text-red-600 mt-2">{errors.role}</p>
           )}
         </div>
 
@@ -696,7 +663,7 @@ const CreateUser: React.FC = () => {
           <SelectField
             label="SFD d'affectation"
             value={formData.sfd}
-            onChange={(value) => updateField('sfd', value as SFDValue)}
+            onChange={(value) => handleChange("sfd", value as SFDValue)}
             options={sfds}
             error={errors.sfd}
             required
@@ -708,7 +675,7 @@ const CreateUser: React.FC = () => {
           <PasswordField
             label="Mot de passe"
             value={formData.password}
-            onChange={(value) => updateField('password', value)}
+            onChange={(value) => handleChange("password", value)}
             placeholder="••••••••"
             error={errors.password}
             required
@@ -719,7 +686,7 @@ const CreateUser: React.FC = () => {
           <PasswordField
             label="Confirmer le mot de passe"
             value={formData.confirmPassword}
-            onChange={(value) => updateField('confirmPassword', value)}
+            onChange={(value) => handleChange("confirmPassword", value)}
             placeholder="••••••••"
             error={errors.confirmPassword}
             required
@@ -740,87 +707,33 @@ const CreateUser: React.FC = () => {
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="flex items-center space-x-2 mb-2">
             <CheckCircle className="w-4 h-4 text-purple-600" />
-            <p className="font-archivo text-sm font-medium text-purple-800">Configuration finale</p>
+            <p className="text-sm font-medium text-purple-800">Configuration finale</p>
           </div>
-          <p className="font-archivo text-xs text-purple-600">
+          <p className="text-xs text-purple-600">
             Options de compte et paramètres additionnels
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="font-archivo font-medium text-foreground">Options de vérification</h4>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.emailVerified}
-                onChange={(e) => updateField('emailVerified', e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="font-archivo text-sm text-foreground">Email vérifié</span>
-            </label>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.phoneVerified}
-                onChange={(e) => updateField('phoneVerified', e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="font-archivo text-sm text-foreground">Téléphone vérifié</span>
-            </label>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-archivo font-medium text-foreground">Notifications de bienvenue</h4>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.sendWelcomeEmail}
-                onChange={(e) => updateField('sendWelcomeEmail', e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="font-archivo text-sm text-foreground">Envoyer email de bienvenue</span>
-            </label>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.sendWelcomeSMS}
-                onChange={(e) => updateField('sendWelcomeSMS', e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="font-archivo text-sm text-foreground">Envoyer SMS de bienvenue</span>
-            </label>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.requirePasswordChange}
-                onChange={(e) => updateField('requirePasswordChange', e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <span className="font-archivo text-sm text-foreground">Forcer changement mot de passe</span>
-            </label>
-          </div>
-        </div>
-
         {selectedRole?.requiresDocuments && (
           <div>
-            <h4 className="font-archivo font-medium text-foreground mb-4">Documents requis</h4>
+            <h4 className="font-medium text-gray-900 mb-4">Documents requis</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {documentConfigs.map((doc) => (
                 <div key={doc.key} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-archivo text-sm font-medium text-foreground">{doc.label}</p>
-                    <button className="flex items-center space-x-2 px-3 py-1 bg-primary text-white rounded hover:bg-primary/90 transition-colors">
+                    <p className="text-sm font-medium text-gray-900">{doc.label}</p>
+                    <button 
+                      onClick={() => {
+                        // Simulation de téléchargement
+                        console.log(`Téléchargement ${doc.label}`);
+                      }}
+                      className="flex items-center space-x-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    >
                       <Upload className="w-3 h-3" />
-                      <span className="font-archivo text-xs">Upload</span>
+                      <span className="text-xs">Upload</span>
                     </button>
                   </div>
-                  <p className="font-archivo text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-500">
                     {formData.documents[doc.key] ? 'Document téléchargé' : 'Aucun fichier'}
                   </p>
                 </div>
@@ -832,35 +745,35 @@ const CreateUser: React.FC = () => {
         <TextAreaField
           label="Notes administratives"
           value={formData.adminNotes}
-          onChange={(value) => updateField('adminNotes', value)}
+          onChange={(value) => handleChange("adminNotes", value)}
           placeholder="Notes internes concernant cet utilisateur..."
           rows={4}
         />
 
         {/* Récapitulatif */}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h4 className="font-archivo font-medium text-foreground mb-4">Récapitulatif</h4>
+          <h4 className="font-medium text-gray-900 mb-4">Récapitulatif</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="font-archivo text-xs text-muted-foreground">Nom complet</p>
-              <p className="font-archivo text-sm font-medium">{formData.firstName} {formData.lastName}</p>
+              <p className="text-xs text-gray-500">Nom complet</p>
+              <p className="text-sm font-medium">{formData.firstName} {formData.lastName}</p>
             </div>
             <div>
-              <p className="font-archivo text-xs text-muted-foreground">Rôle</p>
-              <p className="font-archivo text-sm font-medium">{selectedRole?.label}</p>
+              <p className="text-xs text-gray-500">Rôle</p>
+              <p className="text-sm font-medium">{selectedRole?.label}</p>
             </div>
             <div>
-              <p className="font-archivo text-xs text-muted-foreground">Email</p>
-              <p className="font-archivo text-sm font-medium">{formData.email || 'Non renseigné'}</p>
+              <p className="text-xs text-gray-500">Email</p>
+              <p className="text-sm font-medium">{formData.email || 'Non renseigné'}</p>
             </div>
             <div>
-              <p className="font-archivo text-xs text-muted-foreground">Téléphone</p>
-              <p className="font-archivo text-sm font-medium">{formData.phone}</p>
+              <p className="text-xs text-gray-500">Téléphone</p>
+              <p className="text-sm font-medium">{formData.phone}</p>
             </div>
             {selectedRole?.requiresSFD && (
               <div>
-                <p className="font-archivo text-xs text-muted-foreground">SFD</p>
-                <p className="font-archivo text-sm font-medium">
+                <p className="text-xs text-gray-500">SFD</p>
+                <p className="text-sm font-medium">
                   {sfds.find(s => s.value === formData.sfd)?.label || 'Non sélectionné'}
                 </p>
               </div>
@@ -872,57 +785,20 @@ const CreateUser: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-accent/20">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-64 bg-primary shadow-lg">
-        <div className="p-6">
-          <h1 className="text-xl font-chillax font-bold text-white">TontiFlex</h1>
-          <p className="text-sm font-archivo text-primary-foreground/80">Admin Plateforme</p>
-        </div>
-        
-        <nav className="mt-8 px-4 space-y-2">
-          <div className="bg-primary-foreground/10 rounded-lg p-3 mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-archivo font-medium text-white">Admin Principal</p>
-                <p className="text-xs font-archivo text-primary-foreground/80">En ligne</p>
-              </div>
-            </div>
-          </div>
-
-          {navItems.map((item, index) => (
-            <button
-              key={index}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-archivo text-sm transition-colors ${
-                item.active 
-                  ? 'bg-primary-foreground/20 text-white' 
-                  : 'text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-white'
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="ml-64 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center space-x-4 mb-4">
-              <button className="p-2 hover:bg-primary/10 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-primary" />
+              <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5 text-blue-600" />
               </button>
               <div>
-                <h1 className="text-3xl font-chillax font-bold text-foreground">
+                <h1 className="text-3xl font-bold text-gray-900">
                   Créer un nouvel utilisateur
                 </h1>
-                <p className="font-archivo text-muted-foreground">
+                <p className="text-gray-600">
                   Ajoutez un nouvel utilisateur à la plateforme TontiFlex
                 </p>
               </div>
@@ -930,13 +806,13 @@ const CreateUser: React.FC = () => {
           </div>
 
           {/* Progress Steps */}
-          <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg mb-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
                     step.id === currentStep 
-                      ? 'bg-primary border-primary text-white' 
+                      ? 'bg-blue-600 border-blue-600 text-white' 
                       : step.id < currentStep 
                         ? 'bg-green-500 border-green-500 text-white'
                         : 'bg-white border-gray-300 text-gray-500'
@@ -948,9 +824,9 @@ const CreateUser: React.FC = () => {
                     )}
                   </div>
                   <div className="ml-3 hidden sm:block">
-                    <p className={`text-sm font-archivo font-medium ${
+                    <p className={`text-sm font-medium ${
                       step.id === currentStep 
-                        ? 'text-primary' 
+                        ? 'text-blue-600' 
                         : step.id < currentStep 
                           ? 'text-green-600'
                           : 'text-gray-500'
@@ -969,14 +845,14 @@ const CreateUser: React.FC = () => {
           </div>
 
           {/* Form Content */}
-          <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-xl font-chillax font-semibold text-foreground mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {steps[currentStep - 1].title}
               </h2>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(currentStep / steps.length) * 100}%` }}
                 ></div>
               </div>
@@ -991,7 +867,7 @@ const CreateUser: React.FC = () => {
               <button
                 onClick={prevStep}
                 disabled={currentStep === 1}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-archivo text-sm transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm transition-colors ${
                   currentStep === 1
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-gray-500 text-white hover:bg-gray-600'
@@ -1013,7 +889,7 @@ const CreateUser: React.FC = () => {
               ) : (
                 <button
                   onClick={nextStep}
-                  className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <span>Suivant</span>
                   <ArrowLeft className="w-4 h-4 rotate-180" />

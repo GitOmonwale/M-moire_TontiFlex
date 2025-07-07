@@ -210,7 +210,7 @@ const JoinTontineModal: React.FC<JoinTontineModalProps> = ({
 
       // Appel de la fonction createAdhesion du hook
       const newAdhesion = await createAdhesion(submitData);
-      toast.success("Demande d'adhésion créée avec succès !");
+      toast.success("Votre demande d'adhésion a bien été prise en compte. Vous serez notifié(e) par email de la décision.");
       console.log('Demande d\'adhésion créée avec succès:', newAdhesion);
 
       // Succès

@@ -54,7 +54,7 @@ export interface RepaymentSchedule {
   date_echeance: string;
   montant_capital: string;
   montant_interet: string;
-  montant_total: string;
+  montant_total_du: string;
   statut: 'prevu' | 'en_cours' | 'en_retard' | 'paye' | 'paye_partiel';
   solde_restant: string;
   penalites?: string;

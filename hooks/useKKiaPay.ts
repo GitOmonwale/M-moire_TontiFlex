@@ -58,14 +58,14 @@ export function useKKiaPay(): UseKKiaPayReturn {
     sandbox: true,
     position: 'center' as const,
     theme: '#2196f3',
-    callback: 'https://api.tontiflex.com/api/payments/webhook/'
+    callback: 'https://tontiflexapp.onrender.com/api/payments/webhook/'
   };
 
   // Initialiser le SDK KKiaPay
   const initializeSDK = useCallback(async (): Promise<void> => {
     return new Promise((resolve, reject) => {
       // Vérifier si le script est déjà chargé
-      if (window.openKkiapayWidget) {
+      if (typeof window.openKkiapayWidget === 'function') {
         setIsSDKLoaded(true);
         resolve();
         return;
@@ -79,7 +79,7 @@ export function useKKiaPay(): UseKKiaPayReturn {
       script.onload = () => {
         // Attendre un peu que le SDK soit complètement initialisé
         setTimeout(() => {
-          if (window.openKkiapayWidget) {
+          if (typeof window.openKkiapayWidget === 'function') {
             setIsSDKLoaded(true);
             setError(null);
             console.log('✅ SDK KKiaPay chargé avec succès');

@@ -563,7 +563,7 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
       
       const data: PaginatedSFDSelectionList = await response.json();
-      setAvailableSFDs(data.results || []);
+      setAvailableSFDs(data.sfds || []);
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';

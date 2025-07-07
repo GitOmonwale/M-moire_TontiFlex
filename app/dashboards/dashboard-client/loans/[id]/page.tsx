@@ -12,24 +12,6 @@ import {
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -51,18 +33,12 @@ import {
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from '@/contexts/AuthContext';
-import { useLoans } from '@/hooks/useLoans'; // Ajustez le chemin selon votre structure
-import type { LoanStatus } from '@/types/loans'; // Ajustez le chemin selon vos types
+import { useLoans } from '@/hooks/useLoans';
+import LoanPaymentForm from '@/components/forms/LoanPaymentForm';
+import type { LoanStatus } from '@/types/loans';
 
 // Types pour les statuts d'échéance
 type EcheanceStatus = 'prevu' | 'en_cours' | 'en_retard' | 'paye' | 'paye_partiel';
-
-interface PaymentFormData {
-  amount: string;
-  paymentMethod: string;
-  reference: string;
-  notes: string;
-}
 
 const LoanDetail = () => {
   const { id } = useParams();
@@ -74,18 +50,12 @@ const LoanDetail = () => {
     error, 
     fetchLoanById, 
     fetchCalendrierRemboursement,
-    repay 
+    createRepaymentForPayment,
+    confirmRepaymentPayment
   } = useLoans();
 
   const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<any>(null);
-  const [paymentForm, setPaymentForm] = useState<PaymentFormData>({
-    amount: '',
-    paymentMethod: '',
-    reference: '',
-    notes: ''
-  });
-  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // Charger les données du prêt et du calendrier au montage
   useEffect(() => {
@@ -116,6 +86,79 @@ const LoanDetail = () => {
         toast.error('Erreur lors du rechargement des données');
       }
     }
+  };
+
+  // 🆕 Fonction pour gérer le remboursement avec KKiaPay
+  const handleRepaymentSubmit = async (repaymentData: any) => {
+    try {
+      console.log('📝 Soumission remboursement:', repaymentData);
+      
+      if (id && typeof id === 'string') {
+        // Créer le remboursement (sans paiement pour l'instant)
+        const response = await createRepaymentForPayment(id, repaymentData);
+        
+        console.log('✅ Réponse remboursement:', response);
+        return response;
+      }
+      
+      throw new Error('ID du prêt manquant');
+      
+    } catch (error) {
+      console.error('❌ Erreur création remboursement:', error);
+      throw error;
+    }
+  };
+
+  // 🆕 Callback de succès de paiement KKiaPay
+  const handlePaymentSuccess = async (kkiapayResponse: any, repaymentData: any) => {
+    try {
+      console.log('🎉 Paiement de remboursement réussi, confirmation en cours...', kkiapayResponse);
+      
+      // Confirmer le paiement auprès du backend
+      await confirmRepaymentPayment({
+        kkiapay_transaction_id: kkiapayResponse.transactionId,
+        internal_transaction_id: loan?.id || '',
+        reference: `REF-LOAN-${Date.now()}`,
+        amount: parseFloat(selectedInstallment?.montant_total_du || '0'),
+        phone: repaymentData.numero_telephone,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        repayment_data: repaymentData,
+        echeance_id: selectedInstallment?.id
+      });
+
+      // Rafraîchir les données du prêt
+      if (id && typeof id === 'string') {
+        await fetchLoanById(id);
+        await fetchCalendrierRemboursement(id);
+      }
+      
+      // 🎉 TOAST DE SUCCÈS PERSONNALISÉ POUR REMBOURSEMENT
+      toast.success(
+        `🎉 Remboursement réussi !`,
+        {
+          description: `Échéance du ${new Date(selectedInstallment?.date_echeance).toLocaleDateString('fr-FR')} • ${formatCurrency(selectedInstallment?.montant_total_du || '0')}`,
+          duration: 8000,
+          action: {
+            label: "Voir calendrier",
+            onClick: () => {
+              // Scroll vers le calendrier de remboursement
+              document.querySelector('[data-calendrier]')?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }
+      );
+      
+    } catch (error) {
+      console.error('❌ Erreur confirmation paiement remboursement:', error);
+      toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
+    }
+  };
+
+  // 🆕 Callback d'erreur de paiement KKiaPay
+  const handlePaymentError = (error: any) => {
+    console.log('❌ Erreur de paiement remboursement:', error);
+    toast.error(`❌ Paiement échoué: ${error.message || 'Erreur inconnue'}`);
   };
 
   // Fonction pour formater la devise
@@ -199,81 +242,16 @@ const LoanDetail = () => {
     }
   };
 
+  // Fonction pour ouvrir le formulaire de paiement
   const handlePayInstallment = (installment: any) => {
     setSelectedInstallment(installment);
-    const montantRestant = parseFloat(installment.montant_total) - parseFloat(installment.montant_paye || '0');
-    setPaymentForm({
-      amount: montantRestant.toString(),
-      paymentMethod: '',
-      reference: '',
-      notes: ''
-    });
     setIsPaymentFormOpen(true);
   };
 
-  const handleFormChange = (field: string, value: string) => {
-    setPaymentForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSubmitPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation basique
-    if (!paymentForm.amount || !paymentForm.paymentMethod) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
-    if (!user?.profile?.telephone) {
-      toast.error("Numéro de téléphone manquant dans votre profil");
-      return;
-    }
-
-    setIsSubmittingPayment(true);
-
-    try {
-      // Utiliser le hook repay pour effectuer le paiement
-      const repaymentData = {
-        numero_telephone: user.profile.telephone,
-        description: `Remboursement échéance ${selectedInstallment?.numero_echeance || 'N/A'} - ${paymentForm.notes || 'Paiement échéance'}`
-      };
-
-      if (id && typeof id === 'string') {
-        await repay(id, repaymentData);
-        
-        // Recharger les données après paiement
-        await fetchLoanById(id);
-        await fetchCalendrierRemboursement(id);
-        
-        // Fermer le formulaire
-        setIsPaymentFormOpen(false);
-        setSelectedInstallment(null);
-        setPaymentForm({
-          amount: '',
-          paymentMethod: '',
-          reference: '',
-          notes: ''
-        });
-      }
-    } catch (err) {
-      console.error('Erreur lors du paiement:', err);
-    } finally {
-      setIsSubmittingPayment(false);
-    }
-  };
-
-  const handleCloseForm = () => {
+  // Fonction pour fermer le formulaire
+  const handleClosePaymentForm = () => {
     setIsPaymentFormOpen(false);
     setSelectedInstallment(null);
-    setPaymentForm({
-      amount: '',
-      paymentMethod: '',
-      reference: '',
-      notes: ''
-    });
   };
 
   // Affichage du loading
@@ -378,6 +356,23 @@ const LoanDetail = () => {
           </Button>
         </div>
 
+        {/* Message d'information KKiaPay */}
+        <div className="mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <CreditCard className="h-5 w-5 text-blue-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  Paiements sécurisés avec KKiaPay
+                </p>
+                <p className="text-xs text-blue-600">
+                  Payez vos échéances via Mobile Money (MTN, Moov, etc.)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Informations générales du prêt */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <GlassCard hover={false}>
@@ -436,8 +431,8 @@ const LoanDetail = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date de création :</span>
-                <span className="font-semibold">
-                  {new Date(loan.date_creation).toLocaleDateString('fr-FR')}
+                <span className="font-semibold" title="Afficher en UTC">
+                  {new Date(loan.date_creation).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -501,7 +496,7 @@ const LoanDetail = () => {
 
         {/* Échéancier de remboursement */}
         {calendrierRemboursement && (
-          <div className="mb-8">
+          <div className="mb-8" data-calendrier>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
                 <Calendar size={24} />
@@ -615,7 +610,7 @@ const LoanDetail = () => {
                           {formatCurrency(echeance.montant_interet)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {formatCurrency(echeance.montant_total)}
+                          {formatCurrency(echeance.montant_total_du)}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -624,15 +619,17 @@ const LoanDetail = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {(echeanceStatus === "en_cours" || echeanceStatus === "en_retard" || echeanceStatus === "paye_partiel") && (
+                          {echeanceStatus === "en_cours" || echeanceStatus === "en_retard" || echeanceStatus === "paye_partiel" ? (
                             <Button
                               size="sm"
                               onClick={() => handlePayInstallment(echeance)}
                               className="flex items-center gap-1"
                             >
-                              <DollarSign size={14} />
-                              Payer
+                              <CreditCard size={14} />
+                              Payer avec KKiaPay
                             </Button>
+                          ) : (
+                            <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -641,113 +638,40 @@ const LoanDetail = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Légende */}
+            <div className="mt-6 flex flex-wrap gap-6 justify-center text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="text-green-600" size={16} />
+                <span>Échéance payée</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="text-yellow-600" size={16} />
+                <span>En cours / À venir</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="text-red-600" size={16} />
+                <span>En retard</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CreditCard className="text-blue-600" size={16} />
+                <span>Paiement KKiaPay disponible</span>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Modal du formulaire de paiement */}
-        <Dialog open={isPaymentFormOpen} onOpenChange={setIsPaymentFormOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <DollarSign size={20} />
-                Paiement de l'échéance
-              </DialogTitle>
-              <DialogDescription>
-                Échéance du {selectedInstallment && new Date(selectedInstallment.date_echeance).toLocaleDateString('fr-FR')}
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmitPayment} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="amount">Montant à payer *</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={paymentForm.amount}
-                    onChange={(e) => handleFormChange('amount', e.target.value)}
-                    placeholder="45000"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="paymentMethod">Méthode de paiement *</Label>
-                  <Select
-                    value={paymentForm.paymentMethod}
-                    onValueChange={(value) => handleFormChange('paymentMethod', value)}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                      <SelectItem value="cash">Espèces</SelectItem>
-                      <SelectItem value="bank_transfer">Virement bancaire</SelectItem>
-                      <SelectItem value="check">Chèque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="reference">Référence de transaction</Label>
-                <Input
-                  id="reference"
-                  value={paymentForm.reference}
-                  onChange={(e) => handleFormChange('reference', e.target.value)}
-                  placeholder="REF123456789 (optionnel)"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={paymentForm.notes}
-                  onChange={(e) => handleFormChange('notes', e.target.value)}
-                  placeholder="Commentaires additionnels (optionnel)"
-                  rows={3}
-                />
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Récapitulatif du paiement</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Capital :</span>
-                    <span>{selectedInstallment && formatCurrency(selectedInstallment.montant_capital)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Intérêts :</span>
-                    <span>{selectedInstallment && formatCurrency(selectedInstallment.montant_interet)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold border-t pt-1">
-                    <span>Total échéance :</span>
-                    <span>{selectedInstallment && formatCurrency(selectedInstallment.montant_total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <DialogFooter className="gap-2">
-                <Button type="button" variant="outline" onClick={handleCloseForm} disabled={isSubmittingPayment}>
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={isSubmittingPayment}>
-                  {isSubmittingPayment ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin mr-2" />
-                      Traitement...
-                    </>
-                  ) : (
-                    'Confirmer le paiement'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Modal du formulaire de paiement avec KKiaPay */}
+        <LoanPaymentForm
+          isOpen={isPaymentFormOpen}
+          onClose={handleClosePaymentForm}
+          selectedInstallment={selectedInstallment}
+          loanDetails={loan}
+          loading={loading}
+          onSubmit={handleRepaymentSubmit}
+          onPaymentSuccess={handlePaymentSuccess}
+          onPaymentError={handlePaymentError}
+        />
 
         {/* Indicateur de chargement pendant le rafraîchissement */}
         {loading && loan && (

@@ -88,17 +88,6 @@ interface SFDData {
   adminPhone: string;
   adminPosition: string;
   
-  // Configuration financière
-  commissionRate: number;
-  minContribution: number;
-  maxContribution: number;
-  maxDailyLimit: number;
-  maxLoanAmount: number;
-  defaultLoanRate: number;
-  
-  // Tontines par défaut
-  defaultTontines: Tontine[];
-  
   // Documents
   documents: Documents;
   
@@ -201,41 +190,12 @@ const CreateSFD: React.FC = () => {
     adminPhone: '',
     adminPosition: '',
     
-    // Configuration financière
-    commissionRate: 1.5,
-    minContribution: 1000,
-    maxContribution: 1000000,
-    maxDailyLimit: 5000000,
-    maxLoanAmount: 2000000,
-    defaultLoanRate: 12,
-    
-    // Tontines par défaut
-    defaultTontines: [
-      {
-        name: 'Tontine Générale',
-        description: 'Tontine ouverte à tous les membres',
-        minContribution: 1000,
-        maxContribution: 50000,
-        cycleDuration: 31,
-        memberLimit: 100
-      }
-    ],
-    
     // Documents
     documents: {
       license: null,
       registration: null,
       authorization: null,
       adminId: null
-    },
-    
-    // Configuration technique
-    apiKey: '',
-    webhookUrl: '',
-    notificationSettings: {
-      emailNotifications: true,
-      smsNotifications: true,
-      reportFrequency: 'monthly'
     }
   });
 
@@ -246,9 +206,7 @@ const CreateSFD: React.FC = () => {
     { id: 1, title: 'Informations générales', icon: Building2 },
     { id: 2, title: 'Localisation & Contact', icon: MapPin },
     { id: 3, title: 'Administrateur', icon: User },
-    { id: 4, title: 'Configuration financière', icon: DollarSign },
-    { id: 5, title: 'Tontines par défaut', icon: CreditCard },
-    { id: 6, title: 'Documents & Validation', icon: FileText }
+    { id: 4, title: 'Documents & Validation', icon: FileText }
   ];
 
   const regions: Region[] = [
@@ -294,43 +252,6 @@ const CreateSFD: React.FC = () => {
     }
   };
 
-
-
-  const addTontine = (): void => {
-    const newTontine: Tontine = {
-      name: '',
-      description: '',
-      minContribution: 1000,
-      maxContribution: 50000,
-      cycleDuration: 31,
-      memberLimit: 100
-    };
-
-    setSfdData(prev => ({
-      ...prev,
-      defaultTontines: [...prev.defaultTontines, newTontine]
-    }));
-  };
-
-  const updateTontine = <K extends keyof Tontine>(
-    index: number, 
-    field: K, 
-    value: Tontine[K]
-  ): void => {
-    setSfdData(prev => ({
-      ...prev,
-      defaultTontines: prev.defaultTontines.map((tontine, i) => 
-        i === index ? { ...tontine, [field]: value } : tontine
-      )
-    }));
-  };
-
-  const removeTontine = (index: number): void => {
-    setSfdData(prev => ({
-      ...prev,
-      defaultTontines: prev.defaultTontines.filter((_, i) => i !== index)
-    }));
-  };
 
   const validateStep = (step: number): boolean => {
     const newErrors: ValidationErrors = {};
@@ -655,137 +576,6 @@ const CreateSFD: React.FC = () => {
       case 4:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InputField
-                label="Taux de commission (%)"
-                type="number"
-                value={sfdData.commissionRate}
-                onChange={(value) => updateField('commissionRate', handleNumberChange(value))}
-                placeholder="1.5"
-              />
-              <InputField
-                label="Cotisation minimale (FCFA)"
-                type="number"
-                value={sfdData.minContribution}
-                onChange={(value) => updateField('minContribution', handleIntChange(value))}
-                placeholder="1000"
-              />
-              <InputField
-                label="Cotisation maximale (FCFA)"
-                type="number"
-                value={sfdData.maxContribution}
-                onChange={(value) => updateField('maxContribution', handleIntChange(value))}
-                placeholder="1000000"
-              />
-              <InputField
-                label="Limite quotidienne (FCFA)"
-                type="number"
-                value={sfdData.maxDailyLimit}
-                onChange={(value) => updateField('maxDailyLimit', handleIntChange(value))}
-                placeholder="5000000"
-              />
-              <InputField
-                label="Montant max prêt (FCFA)"
-                type="number"
-                value={sfdData.maxLoanAmount}
-                onChange={(value) => updateField('maxLoanAmount', handleIntChange(value))}
-                placeholder="2000000"
-              />
-              <InputField
-                label="Taux d'intérêt par défaut (%)"
-                type="number"
-                value={sfdData.defaultLoanRate}
-                onChange={(value) => updateField('defaultLoanRate', handleNumberChange(value))}
-                placeholder="12"
-              />
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-chillax font-semibold text-foreground">Tontines par défaut</h3>
-              <button
-                onClick={addTontine}
-                className="flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="font-archivo text-sm">Ajouter une tontine</span>
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {sfdData.defaultTontines.map((tontine, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-archivo font-medium text-foreground">Tontine #{index + 1}</h4>
-                    {sfdData.defaultTontines.length > 1 && (
-                      <button
-                        onClick={() => removeTontine(index)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField
-                      label="Nom de la tontine"
-                      value={tontine.name}
-                      onChange={(value) => updateTontine(index, 'name', value)}
-                      placeholder="Ex: Tontine Commerçants"
-                    />
-                    <InputField
-                      label="Limite de membres"
-                      type="number"
-                      value={tontine.memberLimit}
-                      onChange={(value) => updateTontine(index, 'memberLimit', handleIntChange(value))}
-                      placeholder="100"
-                    />
-                    <InputField
-                      label="Cotisation min (FCFA)"
-                      type="number"
-                      value={tontine.minContribution}
-                      onChange={(value) => updateTontine(index, 'minContribution', handleIntChange(value))}
-                      placeholder="1000"
-                    />
-                    <InputField
-                      label="Cotisation max (FCFA)"
-                      type="number"
-                      value={tontine.maxContribution}
-                      onChange={(value) => updateTontine(index, 'maxContribution', handleIntChange(value))}
-                      placeholder="50000"
-                    />
-                    <InputField
-                      label="Durée du cycle (jours)"
-                      type="number"
-                      value={tontine.cycleDuration}
-                      onChange={(value) => updateTontine(index, 'cycleDuration', handleIntChange(value))}
-                      placeholder="31"
-                    />
-                  </div>
-                  
-                  <div className="mt-4">
-                    <TextAreaField
-                      label="Description"
-                      value={tontine.description}
-                      onChange={(value) => updateTontine(index, 'description', value)}
-                      placeholder="Description de la tontine..."
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-6">
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-600" />
@@ -862,7 +652,7 @@ const CreateSFD: React.FC = () => {
 
           {/* Progress Steps */}
           <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg mb-6">
-            <div className="flex items-center justify-between flex-wrap">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {steps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${

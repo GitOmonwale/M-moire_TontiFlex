@@ -20,6 +20,7 @@ import { RoleKey } from '@/constants/roles';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SideBarProps {
   isOpen?: boolean;
@@ -37,6 +38,7 @@ const SideBar: React.FC<SideBarProps> = ({
 }) => {
   const router = useRouter();
   const { logout } = useAuth();
+  const [openSubmenus,setOpenSubmenus] = useState<Record<number, boolean>>({});
   const sidebarItems = sidebarItemsByRole[role] || [];
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -62,6 +64,13 @@ const toggleCollapse = () => {
     setIsCollapsed(next);
     if (onCollapseChange) onCollapseChange(next); // <- on informe le parent
   }
+};
+
+const toggleSubmenu = (id: number) => {
+  setOpenSubmenus(prev => ({
+    ...prev,
+    [id]: !prev[id]
+  }));
 };
 const handleLogout = async () => {
   try {
@@ -132,76 +141,112 @@ const handleLogout = async () => {
         </div>
 
         {/* Navigation */}
+      
         <nav className="flex-1 p-4 space-y-2">
-          {sidebarItems.map((item) => {
-            const isActive = pathname === item.link;
-            const IconComponent = item.icon;
-            
-            return (
-              <Link key={item.id} href={item.link}>
-                <div className={cn(
-                  "group relative flex items-center p-3 rounded-xl transition-all duration-200 cursor-pointer",
-                  isActive 
-                    ? "bg-white/20 shadow-lg backdrop-blur-sm" 
-                    : "hover:bg-white/10"
-                )}>
-                  
-                  {/* Icône */}
-                  <div className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-lg transition-all",
-                    isActive 
-                      ? "bg-white/20 text-white" 
-                      : "text-emerald-100 group-hover:text-white group-hover:bg-white/10"
+  {sidebarItems.map((item) => {
+    const isActive = pathname === item.link;
+    const hasItems = item.items && item.items.length > 0;
+    const isSubmenuOpen = openSubmenus[item.id] || false;
+    const IconComponent = item.icon;
+    
+    return (
+      <div key={item.id} className="space-y-1">
+        <div 
+          className={cn(
+            "group relative flex items-center p-3 rounded-xl transition-all duration-200 cursor-pointer",
+            isActive && !hasItems 
+              ? "bg-white/20 shadow-lg backdrop-blur-sm" 
+              : "hover:bg-white/10",
+            hasItems ? "justify-between" : ""
+          )}
+          onClick={() => hasItems ? toggleSubmenu(item.id) : router.push(item.link || '#')}
+        >
+          <div className="flex items-center flex-1">
+            {/* Icône */}
+            <div className={cn(
+              "flex items-center justify-center w-10 h-10 rounded-lg transition-all",
+              isActive && !hasItems
+                ? "bg-white/20 text-white" 
+                : "text-emerald-100 group-hover:text-white group-hover:bg-white/10"
+            )}>
+              <IconComponent size={20} />
+            </div>
+
+            {/* Label et description */}
+            {(!isCollapsed || isMobile) && (
+              <div className="ml-3 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className={cn(
+                    "font-medium transition-colors",
+                    isActive && !hasItems ? "text-white" : "text-emerald-100 group-hover:text-white"
                   )}>
-                    <IconComponent size={20} />
-                  </div>
-
-                  {/* Label et description */}
-                  {(!isCollapsed || isMobile) && (
-                    <div className="ml-3 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className={cn(
-                          "font-medium transition-colors",
-                          isActive ? "text-white" : "text-emerald-100 group-hover:text-white"
-                        )}>
-                          {item.label}
-                        </span>
-                        
-                        {/* Badge pour notifications */}
-                        {item.badge && (
-                          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className={cn(
-                        "text-xs mt-0.5 transition-colors",
-                        isActive ? "text-emerald-100" : "text-emerald-300"
-                      )}>
-                        {item.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Indicateur actif */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
-                  )}
-
-                  {/* Tooltip pour mode collapsed */}
-                  {isCollapsed && !isMobile && (
-                    <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                      {item.label}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45" />
-                    </div>
+                    {item.label}
+                  </span>
+                  
+                  {item.badge && (
+                    <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                      {item.badge}
+                    </span>
                   )}
                 </div>
-              </Link>
-            );
-          })}
-        </nav>
+                
+                <p className={cn(
+                  "text-xs mt-0.5 transition-colors",
+                  isActive && !hasItems ? "text-emerald-100" : "text-emerald-300"
+                )}>
+                  {item.description}
+                </p>
+              </div>
+            )}
+          </div>
 
+          {/* Flèche pour les sous-menus */}
+          {hasItems && (!isCollapsed || isMobile) && (
+            <div className="ml-2">
+              {isSubmenuOpen ? (
+                <ChevronUp size={16} className="text-emerald-200" />
+              ) : (
+                <ChevronDown size={16} className="text-emerald-200" />
+              )}
+            </div>
+          )}
+
+          {/* Indicateur actif */}
+          {isActive && !hasItems && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+          )}
+        </div>
+
+        {/* Sous-menus */}
+        {hasItems && isSubmenuOpen && (!isCollapsed || isMobile) && (
+          <div className="ml-8 mt-1 space-y-1">
+            {item.items?.map((subItem) => {
+              const isSubItemActive = pathname === subItem.link;
+              const SubIcon = subItem.icon;
+              
+              return (
+                <Link key={subItem.id} href={subItem.link || '#'}>
+                  <div className={cn(
+                    "flex items-center p-2 rounded-lg transition-colors",
+                    isSubItemActive
+                      ? "bg-white/10 text-white"
+                      : "text-emerald-100 hover:bg-white/5"
+                  )}>
+                    <SubIcon size={16} className="mr-2" />
+                    <span className="text-sm">{subItem.label}</span>
+                    {isSubItemActive && (
+                      <div className="ml-2 w-1 h-4 bg-white rounded-full" />
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</nav>
         {/* Footer de la sidebar */}
         <div className="p-4 border-t border-emerald-500/30 mb-6">
           <div className="space-y-2">

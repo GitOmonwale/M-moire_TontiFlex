@@ -15,6 +15,40 @@ import type {
   LoanFilters,
 } from '../types/loans';
 
+// 🆕 Types pour l'intégration KKiaPay
+export interface RepaymentResponse {
+  success: boolean;
+  message: string;
+  payment_link: string;
+  transaction_kkiapay: {
+    id: string;
+    reference: string;
+    status: "initialized" | "success" | "failed" | string;
+    montant: number;
+  };
+  echeance_details: {
+    id: string;
+    date_echeance: string;
+    montant_capital: string;
+    montant_interet: string;
+    montant_total_du: string;
+    nouveau_statut: string;
+  };
+  loan_updated: Loan;
+}
+
+export interface PaymentConfirmationData {
+  kkiapay_transaction_id: string;
+  internal_transaction_id: string;
+  reference: string;
+  amount: number;
+  phone: string;
+  status: 'success' | 'failed';
+  timestamp: string;
+  repayment_data: RepaymentData;
+  echeance_id?: string;
+}
+
 interface useLoansAPIResults {
   loans: Loan[];
   loan: Loan | null;
@@ -34,7 +68,12 @@ interface useLoansAPIResults {
   // Specialized operations
   fetchCalendrierRemboursement: (id: string) => Promise<CalendrierRemboursement>;
   decaissement: (id: string, decaissementData: DecaissementData) => Promise<Loan>;
-  repay: (id: string, repaymentData: RepaymentData) => Promise<any>;
+  
+  // 🆕 Nouvelles méthodes pour KKiaPay
+  createRepaymentForPayment: (id: string, repaymentData: RepaymentData) => Promise<RepaymentResponse>;
+  confirmRepaymentPayment: (confirmationData: PaymentConfirmationData) => Promise<void>;
+  repay: (id: string, repaymentData: RepaymentData) => Promise<any>; // Version classique
+  
   fetchMyLoans: () => Promise<MyLoansResponse>;
 }
 
@@ -336,7 +375,91 @@ export function useLoans(): useLoansAPIResults {
     }
   };
 
-  // Effectuer un remboursement via KKiaPay
+  // 🆕 Créer un remboursement pour le paiement KKiaPay (sans effectuer le paiement)
+  const createRepaymentForPayment = async (id: string, repaymentData: RepaymentData): Promise<RepaymentResponse> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/loans/${id}/repay/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(repaymentData),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors de la création du remboursement';
+        if (response.status === 400) {
+          errorMessage = 'Données invalides ou échéance non trouvée';
+        } else if (response.status === 403) {
+          errorMessage = 'Permission refusée';
+        } else if (response.status === 404) {
+          errorMessage = 'Prêt non trouvé';
+        }
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const repaymentResult = await response.json();
+      console.log('✅ Remboursement créé:', repaymentResult);
+      
+      return repaymentResult;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 Confirmer le paiement après succès KKiaPay
+  const confirmRepaymentPayment = async (confirmationData: PaymentConfirmationData): Promise<void> => {
+    try {
+      const webhookData = {
+        transactionId: confirmationData.kkiapay_transaction_id,
+        isPaymentSucces: confirmationData.status === 'success',
+        event: confirmationData.status === 'success' ? 'payment.success' : 'payment.failed',
+        timestamp: confirmationData.timestamp,
+        amount: confirmationData.amount,
+        status: confirmationData.status.toUpperCase(),
+        data: {
+          transaction_id: confirmationData.internal_transaction_id,
+          reference: confirmationData.reference,
+          type: 'loan_repayment',
+          form_data: confirmationData.repayment_data,
+          echeance_id: confirmationData.echeance_id
+        }
+      };
+
+      const response = await fetch(`${baseUrl}/payments/webhook/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur confirmation paiement: ${response.status}`);
+      }
+
+      console.log('✅ Remboursement confirmé avec succès');
+    } catch (err) {
+      console.error('❌ Erreur confirmation remboursement:', err);
+      throw err;
+    }
+  };
+
+  // 🔄 Effectuer un remboursement via KKiaPay (version classique pour compatibilité)
   const repay = async (id: string, repaymentData: RepaymentData): Promise<any> => {
     setLoading(true);
     setError(null);
@@ -423,6 +546,8 @@ export function useLoans(): useLoansAPIResults {
     deleteLoan,
     fetchCalendrierRemboursement,
     decaissement,
+    createRepaymentForPayment,
+    confirmRepaymentPayment,
     repay,
     fetchMyLoans,
   };
