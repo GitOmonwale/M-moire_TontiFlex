@@ -90,11 +90,6 @@ interface SFDData {
   
   // Documents
   documents: Documents;
-  
-  // Configuration technique
-  apiKey: string;
-  webhookUrl: string;
-  notificationSettings: NotificationSettings;
 }
 
 interface ValidationErrors {
@@ -609,17 +604,6 @@ const CreateSFD: React.FC = () => {
                     )}
                   </div>
                 ))}
-              </div>
-              
-              <div className="space-y-4">
-                <h4 className="font-archivo font-medium text-foreground">Configuration technique</h4>
-                
-                <InputField
-                  label="URL de webhook"
-                  value={sfdData.webhookUrl}
-                  onChange={(value) => updateField('webhookUrl', value)}
-                  placeholder="https://sfd.bj/webhooks/tontiflex"
-                />
               </div>
             </div>
           </div>

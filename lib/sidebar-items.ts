@@ -42,7 +42,7 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
     },
     {
       id: 2,
-      label: 'Gestion utilisateurs',
+      label: 'Utilisateurs',
       icon: Users,
       link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
       description: 'Gestion des utilisateurs',
@@ -51,14 +51,14 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
           id: 1,
           label: 'Clients SFD',
           icon: Users,
-          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs/clients',
           description: 'Gestion des utilisateurs'
         },
         {
           id: 2,
           label: 'Agents SFD',
           icon: Users,
-          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs/agents-sfd',
           description: 'Gestion des utilisateurs'
         },
         {
@@ -72,14 +72,14 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
           id: 4,
           label: 'Admins plateforme',
           icon: Users,
-          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs',
+          link: '/dashboards/dashboard-admin_tontiflex/utilisateurs/admins-plateforme',
           description: 'Gestion des utilisateurs'
         }
       ]
     },
     {
       id: 3,
-      label: 'Gestion SFD',
+      label: 'SFD',
       icon: Building2,
       link: '/dashboards/dashboard-admin_tontiflex/sfd',
       description: 'Gestion des SFD'
@@ -211,13 +211,20 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
     },
     {
       id: 4,
-      label: 'Retraits',
+      label: 'Retraits tontines',
       icon: PiggyBank,
-      link: '/dashboards/dashboard-agent/withdrawal-requests',
+      link: '/dashboards/dashboard-agent/withdrawal-requests-tontine',
       description: 'Gérer les demandes de retraits'
     },
     {
       id: 5,
+      label: 'Retraits comptes',
+      icon: PiggyBank,
+      link: '/dashboards/dashboard-agent/withdrawal-requests-compte',
+      description: 'Gérer les demandes de retraits'
+    },
+    {
+      id: 6,
       label: 'Historiques',
       icon: PiggyBank,
       link: '/dashboards/dashboard-agent/history',
@@ -230,18 +237,21 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       label: 'Tableau de bord',
       icon: Home,
       link: '/dashboards/dashboard-supervisor',
+      description: 'Vue d\'ensemble'
     },
     {
       id: 2,
       label: 'Demandes de prêt',
       icon: FileText,
       link: '/dashboards/dashboard-supervisor/loan-requests',
-    },
+      description: 'Gérer les demandes de prêt'
+      },
     {
       id: 3,
       label: 'Suivi remboursements',
       icon: TrendingUp,
       link: '/dashboards/dashboard-supervisor/loan-tracking',
+      description: 'Suivre les remboursements'
     },
     // {
     //   id: 4,
@@ -254,12 +264,14 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       label: 'Rapports & Analytics',
       icon: BarChart3,
       link: '/dashboards/dashboard-supervisor/reports',
+      description: 'Gérer les rapports & analytics' 
     },
     {
       id: 6,
       label: 'Historique décisions',
       icon: ClipboardList,
       link: '/dashboards/dashboard-supervisor/decision-history',
+      description: 'Historique des décisions'
     },
   ]
 };

@@ -1,5 +1,6 @@
+
+'use client'
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 // Types TypeScript basés sur l'API des clients
@@ -228,8 +229,7 @@ export function useClientsAPI(): useClientsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des clients');
-      throw err;
+        throw err;
     } finally {
       setLoading(false);
     }
@@ -259,7 +259,6 @@ export function useClientsAPI(): useClientsAPIResults {
       return clientData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement du client');
       return null;
     } finally {
       setLoading(false);
@@ -312,7 +311,6 @@ export function useClientsAPI(): useClientsAPIResults {
       return { cotisations, stats };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement des cotisations du client');
       throw err;
     } finally {
       setLoading(false);
@@ -365,7 +363,6 @@ export function useClientsAPI(): useClientsAPIResults {
       return { retraits, stats };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement des retraits du client');
       throw err;
     } finally {
       setLoading(false);
@@ -396,7 +393,6 @@ export function useClientsAPI(): useClientsAPIResults {
       return tontines;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement des tontines du client');
       throw err;
     } finally {
       setLoading(false);
@@ -428,7 +424,6 @@ export function useClientsAPI(): useClientsAPIResults {
       return transactions;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement de l\'historique des transactions');
       throw err;
     } finally {
       setLoading(false);

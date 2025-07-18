@@ -49,16 +49,24 @@ export interface UpdateLoanData {
 }
 
 export interface RepaymentSchedule {
-  // Structure basée sur la documentation - à adapter selon votre backend
-  id: string;
+  id: number;
+  loan: number;
+  loan_info: string;
+  client_nom: string;
+  numero_echeance: number;
   date_echeance: string;
-  montant_capital: string;
-  montant_interet: string;
-  montant_total_du: string;
-  statut: 'prevu' | 'en_cours' | 'en_retard' | 'paye' | 'paye_partiel';
-  solde_restant: string;
-  penalites?: string;
+  montant_mensualite: number;
+  montant_capital: number;
+  montant_interet: number;
+  solde_restant: number;
+  statut: string;
+  date_paiement?: string;
+  montant_penalites: number;
+  montant_total_du: number;
+  jours_retard: number;
+  est_en_retard: boolean;
 }
+
 
 export interface CalendrierRemboursement {
   echeances: RepaymentSchedule[];

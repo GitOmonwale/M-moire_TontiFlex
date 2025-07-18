@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 // Types TypeScript basés sur l'API
@@ -115,7 +114,6 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des carnets de cotisation');
       throw err;
     } finally {
       setLoading(false);
@@ -138,7 +136,6 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
       return await response.json();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement du carnet de cotisation');
       return null;
     } finally {
       setLoading(false);
@@ -191,12 +188,10 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
 
       const newCarnet = await response.json();
       setCarnets(prev => [newCarnet, ...prev]);
-      toast.success('Carnet de cotisation créé avec succès');
       return newCarnet;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -224,12 +219,10 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
       setCarnets(prev => 
         prev.map(carnet => carnet.id === id ? { ...carnet, ...updatedCarnet } : carnet)
       );
-      toast.success('Carnet de cotisation mis à jour avec succès');
       return updatedCarnet;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -251,12 +244,10 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
       }
 
       setCarnets(prev => prev.filter(carnet => carnet.id !== id));
-      toast.success('Carnet de cotisation supprimé avec succès');
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -285,7 +276,6 @@ export function useCarnetsCotisation(): useCarnetsCotisationResults {
       return etatData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement de l\'état du carnet');
       return null;
     } finally {
       setLoading(false);

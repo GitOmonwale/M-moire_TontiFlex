@@ -47,6 +47,7 @@ export interface SavingsAccount {
   date_validation_agent: string;
   date_paiement_frais: string;
   date_activation: string;
+  date_demande: string;
   commentaires_agent: string;
   raison_rejet: string | null;
 }
@@ -92,11 +93,6 @@ export interface DepositData {
   montant: string; // decimal
   numero_telephone: string; // minLength: 1, maxLength: 15
   commentaires?: string; // maxLength: 500
-}
-
-export interface PayFeesData {
-  numero_telephone: string; // minLength: 1, maxLength: 15
-  confirmer_montant: string; // decimal
 }
 
 export interface WithdrawData {

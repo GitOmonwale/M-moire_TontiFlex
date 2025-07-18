@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 import type {
@@ -127,7 +126,6 @@ export function useLoans(): useLoansAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des prêts accordés');
       throw err;
     } finally {
       setLoading(false);
@@ -152,7 +150,6 @@ export function useLoans(): useLoansAPIResults {
       return loanData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement du prêt');
       return null;
     } finally {
       setLoading(false);
@@ -192,12 +189,10 @@ export function useLoans(): useLoansAPIResults {
 
       const newLoan = await response.json();
       setLoans(prev => [newLoan, ...prev]);
-      toast.success('Prêt créé avec succès');
       return newLoan;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -224,12 +219,10 @@ export function useLoans(): useLoansAPIResults {
         prev.map(loan => loan.id === id ? { ...loan, ...updatedLoan } : loan)
       );
       setLoan(updatedLoan);
-      toast.success('Prêt mis à jour avec succès');
       return updatedLoan;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -256,12 +249,10 @@ export function useLoans(): useLoansAPIResults {
         prev.map(loan => loan.id === id ? { ...loan, ...updatedLoan } : loan)
       );
       setLoan(updatedLoan);
-      toast.success('Prêt mis à jour avec succès');
       return updatedLoan;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -286,12 +277,10 @@ export function useLoans(): useLoansAPIResults {
       if (loan?.id === id) {
         setLoan(null);
       }
-      toast.success('Prêt supprimé avec succès');
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -321,7 +310,6 @@ export function useLoans(): useLoansAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -363,12 +351,10 @@ export function useLoans(): useLoansAPIResults {
         setLoan(updatedLoan);
       }
       
-      toast.success('Prêt décaissé avec succès');
       return updatedLoan;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -483,7 +469,6 @@ export function useLoans(): useLoansAPIResults {
       }
 
       const result = await response.json();
-      toast.success('Remboursement initié avec succès');
       
       // Rafraîchir le prêt si c'est le prêt affiché
       if (loan?.id === id) {
@@ -494,7 +479,6 @@ export function useLoans(): useLoansAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -524,7 +508,6 @@ export function useLoans(): useLoansAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement de vos prêts');
       throw err;
     } finally {
       setLoading(false);

@@ -27,7 +27,7 @@ interface InscriptionData {
   telephone: string;
   email: string;
   adresse: string;
-  profession: string;
+  profession: string; 
   motDePasse: string;
 }
 
@@ -55,7 +55,10 @@ interface UserMe {
     est_actif: boolean;
     tontines_count: number;
   };
-  sfd: string;
+  sfd: {
+    id: string;
+    nom: string;
+  };
 }
 
 interface AuthContextType {
@@ -65,6 +68,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   accessToken: string | null;
   user: UserMe | null;
+  userType: string | null;
   isLoading: boolean;
   refreshToken: () => Promise<boolean>;
 }
@@ -77,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserMe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+const [userType, setUserType] = useState<string | null>(null);
   const BASE_URL = "https://tontiflexapp.onrender.com";
 
   const refreshToken = async (): Promise<boolean> => {
@@ -322,6 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userData = await fetchUserData();
       if (userData) setUser(userData);
       const defaultRoute = DEFAULT_ROUTES[data.user_type as RoleKey] || '/';
+      setUserType(data.user_type);
       setTimeout(() => {
         router.push(defaultRoute);
       }, 2000);
@@ -354,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       isLoading,
       refreshToken,
+      userType,
     }}>
       {children}
     </AuthContext.Provider>

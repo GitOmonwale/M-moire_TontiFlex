@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { Adhesion, AdhesionFilters, PaginatedAdhesionList, CreateAdhesionData, UpdateAdhesionData, UpdateAdhesionPartialData, ValidateAgentData, PayerData } from '../types/adhesions';
+import { Adhesion, AdhesionFilters, PaginatedAdhesionList, CreateAdhesionData, UpdateAdhesionData, UpdateAdhesionPartialData, ValidateAgentData, PayerData, RejectAdhesionData } from '../types/adhesions';
 
 interface useAdhesionsResults {
   adhesions: Adhesion[];
@@ -21,6 +20,7 @@ interface useAdhesionsResults {
   integrerClient: (id: string) => Promise<Adhesion>;
   payerFraisAdhesion: (id: string, payerData: PayerData) => Promise<Adhesion>;
   validerAgent: (id: string, validateData?: ValidateAgentData) => Promise<Adhesion>;
+  rejectAdhesion: (id: string, rejectData?: RejectAdhesionData) => Promise<Adhesion>;
 }
 
 export function useAdhesions(): useAdhesionsResults {
@@ -71,7 +71,6 @@ export function useAdhesions(): useAdhesionsResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des demandes d\'adhésion');
       throw err;
     } finally {
       setLoading(false);
@@ -96,7 +95,6 @@ export function useAdhesions(): useAdhesionsResults {
       return adhesionData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement de la demande d\'adhésion');
       return null;
     } finally {
       setLoading(false);
@@ -148,12 +146,10 @@ export function useAdhesions(): useAdhesionsResults {
 
       const newAdhesion = await response.json();
       setAdhesions(prev => [newAdhesion, ...prev]);
-      toast.success('Demande d\'adhésion créée avec succès');
       return newAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -199,12 +195,10 @@ export function useAdhesions(): useAdhesionsResults {
         prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
       );
       setAdhesion(updatedAdhesion);
-      toast.success('Demande d\'adhésion mise à jour avec succès');
       return updatedAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -243,12 +237,10 @@ export function useAdhesions(): useAdhesionsResults {
         prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
       );
       setAdhesion(updatedAdhesion);
-      toast.success('Demande d\'adhésion mise à jour avec succès');
       return updatedAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -273,12 +265,10 @@ export function useAdhesions(): useAdhesionsResults {
       if (adhesion?.id === id) {
         setAdhesion(null);
       }
-      toast.success('Demande d\'adhésion supprimée avec succès');
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -310,12 +300,10 @@ export function useAdhesions(): useAdhesionsResults {
         prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
       );
       setAdhesion(updatedAdhesion);
-      toast.success('Client intégré avec succès dans la tontine');
       return updatedAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -353,12 +341,48 @@ export function useAdhesions(): useAdhesionsResults {
         prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
       );
       setAdhesion(updatedAdhesion);
-      toast.success('Paiement des frais d\'adhésion effectué avec succès');
       return updatedAdhesion;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  // Rejeter une demande d'adhésion (Agent SFD)
+  const rejectAdhesion = async (id: string, ): Promise<Adhesion> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/adhesions/${id}/reject/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors du rejet de la demande';
+        if (response.status === 403) {
+          errorMessage = 'Action non autorisée';
+        } else if (response.status === 404) {
+          errorMessage = 'Demande d\'adhésion introuvable';
+        } else if (response.status === 409) {
+          errorMessage = 'La demande ne peut pas être rejetée dans son état actuel';
+        }
+        throw new Error(errorMessage);
+      }
+
+      const updatedAdhesion = await response.json();
+      setAdhesions(prev => 
+        prev.map(adhesion => adhesion.id === id ? { ...adhesion, ...updatedAdhesion } : adhesion)
+      );
+      setAdhesion(updatedAdhesion);
+      return updatedAdhesion;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -375,7 +399,7 @@ export function useAdhesions(): useAdhesionsResults {
         formData.append('commentaires', validateData.commentaires);
       }
 
-      const response = await fetch(`${baseUrl}/adhesions/${id}/valider-agent/`, {
+      const response = await fetch(`${baseUrl}/adhesions/${id}/valider-et-payer/`, {
         method: 'POST',
         headers: getAuthHeaders(true), // multipart/form-data
         body: formData,
@@ -422,5 +446,6 @@ export function useAdhesions(): useAdhesionsResults {
     integrerClient,
     payerFraisAdhesion,
     validerAgent,
+    rejectAdhesion,
   };
 }

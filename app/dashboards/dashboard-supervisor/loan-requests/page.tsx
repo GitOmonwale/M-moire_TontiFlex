@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,13 +11,11 @@ import {
   Eye,
   Edit,
   Clock,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   User,
   DollarSign,
   Calendar,
-  Target,
   Send,
   Download,
   RefreshCw
@@ -25,7 +23,7 @@ import {
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { mockLoanRequests, type LoanRequest } from '@/data/supervisorMockData';
+import { useLoansApplications } from '@/hooks/useLoansApplications';
 
 const LoanRequestsPage = () => {
   const [filterStatus, setFilterStatus] = useState("tous");
@@ -34,14 +32,17 @@ const LoanRequestsPage = () => {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  // Filtrage et tri des demandes
-  const filteredRequests = mockLoanRequests
+const { applications, fetchApplications } = useLoansApplications();
+useEffect(() => {
+  fetchApplications();
+}, []);
+  const filteredRequests = applications
     .filter(request => {
-      const statusMatch = filterStatus === "tous" || request.status === filterStatus;
-      const urgencyMatch = filterUrgency === "tous" || request.urgency === filterUrgency;
+      const statusMatch = filterStatus === "tous" || request.statut === filterStatus;
+      const urgencyMatch = filterUrgency === "tous" || request.type_pret === filterUrgency;
       const searchMatch = searchTerm === "" ||
-        request.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.clientProfession.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.id.toLowerCase().includes(searchTerm.toLowerCase());
 
       return statusMatch && urgencyMatch && searchMatch;
@@ -51,16 +52,16 @@ const LoanRequestsPage = () => {
 
       switch (sortBy) {
         case "date":
-          comparison = new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime();
+          comparison = new Date(a.date_soumission).getTime() - new Date(b.date_soumission).getTime();
           break;
         case "amount":
-          comparison = a.requestedAmount - b.requestedAmount;
+          comparison = Number(a.montant_souhaite) - Number(b.montant_souhaite);
           break;
         case "score":
-          comparison = a.reliabilityScore - b.reliabilityScore;
+          comparison = Number(a.ratio_endettement) - Number(b.ratio_endettement);
           break;
         case "name":
-          comparison = a.clientName.localeCompare(b.clientName);
+          comparison = a.nom.localeCompare(b.nom);
           break;
         default:
           comparison = 0;
@@ -71,11 +72,11 @@ const LoanRequestsPage = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'soumis':
         return <Clock className="text-orange-600" size={16} />;
-      case 'under_review':
+      case 'en_cours_examen':
         return <Eye className="text-blue-600" size={16} />;
-      case 'approved':
+      case 'transfere_admin':
         return <CheckCircle className="text-green-600" size={16} />;
       case 'rejected':
         return <XCircle className="text-red-600" size={16} />;
@@ -88,11 +89,11 @@ const LoanRequestsPage = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'soumis':
         return 'En attente';
-      case 'under_review':
+      case 'en_cours_examen':
         return 'En cours d\'examen';
-      case 'approved':
+      case 'transfere_admin':
         return 'Approuvé';
       case 'rejected':
         return 'Rejeté';
@@ -137,7 +138,7 @@ const LoanRequestsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total demandes</p>
-                <p className="text-2xl font-bold text-gray-900">{mockLoanRequests.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
               </div>
               <FileText className="text-emerald-600" size={24} />
             </div>
@@ -148,7 +149,7 @@ const LoanRequestsPage = () => {
               <div>
                 <p className="text-sm text-gray-600">En attente</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {mockLoanRequests.filter(r => r.status === 'pending').length}
+                  {applications.filter(r => r.statut === 'soumis').length}
                 </p>
               </div>
               <Clock className="text-orange-600" size={24} />
@@ -159,7 +160,7 @@ const LoanRequestsPage = () => {
               <div>
                 <p className="text-sm text-gray-600">Montant total</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  {(mockLoanRequests.reduce((sum, r) => sum + r.requestedAmount, 0) / 1000000).toFixed(1)}M
+                  {(applications.reduce((sum, r) => Number(sum) + Number(r.montant_souhaite), 0) / 1000000).toFixed(1)}
                 </p>
               </div>
               <DollarSign className="text-emerald-600" size={24} />
@@ -194,9 +195,9 @@ const LoanRequestsPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tous">Tous statuts</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="under_review">En cours</SelectItem>
-                  <SelectItem value="approved">Approuvé</SelectItem>
+                  <SelectItem value="soumis">En attente</SelectItem>
+                  <SelectItem value="en_cours_examen">En cours</SelectItem>
+                  <SelectItem value="transfere_admin">Approuvé</SelectItem>
                   <SelectItem value="rejected">Rejeté</SelectItem>
                   <SelectItem value="transferred">Transféré</SelectItem>
                 </SelectContent>
@@ -229,11 +230,11 @@ const LoanRequestsPage = () => {
                     <div className="flex-1">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{request.clientName}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{request.nom}</h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <div className="flex items-center">
                               <User className="mr-1" size={14} />
-                              {request.clientProfession}
+                              {request.situation_professionnelle}
                             </div>
                             <div className="flex items-center">
                               <FileText className="mr-1" size={14} />
@@ -241,15 +242,15 @@ const LoanRequestsPage = () => {
                             </div>
                             <div className="flex items-center">
                               <Calendar className="mr-1" size={14} />
-                              {format(new Date(request.requestDate), 'dd MMM yyyy', { locale: fr })}
+                              {format(new Date(request.date_soumission), 'dd MMM yyyy', { locale: fr })}
                             </div>
                           </div>
                         </div>
 
                         {/* Badges */}
                         <div className="flex gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap ${getScoreColor(request.reliabilityScore)}`}>
-                            Score: {request.reliabilityScore}/100
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap ${getScoreColor(Number(request.ratio_endettement))}`}>
+                            Score: {request.ratio_endettement}/100
                           </span>
                         </div>
                       </div>
@@ -258,21 +259,21 @@ const LoanRequestsPage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div className="bg-emerald-50 p-3 rounded-lg">
                           <p className="text-sm text-gray-600">Montant demandé</p>
-                          <p className="font-bold text-emerald-600">{request.requestedAmount.toLocaleString()} FCFA</p>
+                          <p className="font-bold text-emerald-600">{request.montant_souhaite.toLocaleString()} FCFA</p>
                         </div>
                         <div className="bg-blue-50 p-3 rounded-lg">
                           <p className="text-sm text-gray-600">Durée</p>
-                          <p className="font-bold text-blue-600">{request.requestedDuration} mois</p>
+                          <p className="font-bold text-blue-600">{request.duree_pret} mois</p>
                         </div>
                         <div className="bg-purple-50 p-3 rounded-lg">
                           <p className="text-sm text-gray-600">Revenus mensuels</p>
-                          <p className="font-bold text-purple-600">{request.monthlyIncome.toLocaleString()} FCFA</p>
+                          <p className="font-bold text-purple-600">{request.revenu_mensuel.toLocaleString()} FCFA</p>
                         </div>
                       </div>
 
                       <div className="mb-4">
                         <p className="text-sm text-gray-600 mb-1">Objet du prêt:</p>
-                        <p className="text-gray-900">{request.purpose}</p>
+                        <p className="text-gray-900">{request.objet_pret}</p>
                       </div>
 
                       {/* Documents et historique */}
@@ -280,13 +281,13 @@ const LoanRequestsPage = () => {
                         <div>
                           <p className="text-sm text-gray-600 mb-2">Documents fournis:</p>
                           <div className="flex gap-2">
-                            <span className={`px-2 py-1 rounded text-xs ${request.documents.identity ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded text-xs ${request.justificatif_identite ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               Identité
                             </span>
-                            <span className={`px-2 py-1 rounded text-xs ${request.documents.income ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded text-xs ${request.revenu_mensuel ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               Revenus
                             </span>
-                            <span className={`px-2 py-1 rounded text-xs ${request.documents.guarantee ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 rounded text-xs ${request.details_garantie ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               Garantie
                             </span>
                           </div>
@@ -294,8 +295,8 @@ const LoanRequestsPage = () => {
                         <div>
                           <p className="text-sm text-gray-600 mb-2">Historique épargne:</p>
                           <div className="text-sm text-gray-700">
-                            <span>{request.savingsHistory.accountAge} mois • </span>
-                            <span>Score régularité: {request.savingsHistory.regularityScore}/100</span>
+                            <span>{request.historique_prets_anterieurs} mois • </span>
+                            <span>Score régularité: {request.ratio_endettement}/100</span>
                           </div>
                         </div>
                       </div>
@@ -306,9 +307,9 @@ const LoanRequestsPage = () => {
                       <div className="flex lg:flex-col items-center lg:items-end gap-4">
                         {/* Statut */}
                         <div className="flex items-center gap-2 mb-3">
-                          {getStatusIcon(request.status)}
+                          {getStatusIcon(request.statut)}
                           <span className="font-medium text-gray-900">
-                            {getStatusLabel(request.status)}
+                            {getStatusLabel(request.statut)}
                           </span>
                         </div>
 
@@ -324,7 +325,7 @@ const LoanRequestsPage = () => {
                             </GlassButton>
                           </Link>
 
-                          {request.status === 'pending' && (
+                          {request.statut === 'soumis' && (
                             <Link href={`/dashboards/dashboard-supervisor/loan-requests/${request.id}?tab=decision&action=process`}>
                               <GlassButton
                                 variant="outline"
@@ -353,7 +354,7 @@ const LoanRequestsPage = () => {
 
           {filteredRequests.length > 0 && (
             <div className="mt-6 text-sm text-gray-600 text-center">
-              {filteredRequests.length} demande(s) trouvée(s) sur {mockLoanRequests.length} au total
+              {filteredRequests.length} demande(s) trouvée(s) sur {applications.length} au total
             </div>
           )}
         </GlassCard>

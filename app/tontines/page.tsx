@@ -10,6 +10,7 @@ import { Tontine } from "@/types/tontines";
 import JoinTontineModal from "@/components/forms/JoinTontine";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // Types et interfaces
 type TontineStatus = 'active' | 'fermee' | 'en_attente';
@@ -56,6 +57,7 @@ const AvailableTontines: React.FC = () => {
         console.log("availableTontines", availableTontines);
       } catch (error) {
         console.error('Erreur lors du chargement:', error);
+        toast.error('Erreur lors du chargement des tontines disponibles');
       }
     };
 
@@ -85,6 +87,7 @@ const AvailableTontines: React.FC = () => {
       setTontines(availableTontines);
     } catch (error) {
       console.error('Erreur lors du rechargement:', error);
+      toast.error('Erreur lors du rechargement des tontines disponibles');
     }
   };
 

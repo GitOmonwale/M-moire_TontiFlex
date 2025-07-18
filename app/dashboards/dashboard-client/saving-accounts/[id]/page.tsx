@@ -36,7 +36,8 @@ import {
   Phone,
   MapPin,
   Activity,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, differenceInMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -45,6 +46,7 @@ import Link from 'next/link';
 import WithdrawalForm from '@/components/forms/WithdrawalForm';
 import DepositForm from '@/components/forms/DepositForm';
 import { useSavingsAccounts } from '@/hooks/useSavingAccounts';
+import { toast } from 'sonner';
 
 interface Transaction {
   id: string;
@@ -63,15 +65,21 @@ interface Transaction {
   notes?: string;
 }
 
-
-
 const SavingsAccountDetails = () => {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   // For debugging - will show in browser console
   console.log('Current savings account ID:', id);
-  const { savingsAccount, fetchSavingsAccountById } = useSavingsAccounts();
+  
+  const { 
+    savingsAccount, 
+    fetchSavingsAccountById,
+    createDepositForPayment,
+    confirmDepositPayment,
+    withdraw
+  } = useSavingsAccounts();
+  
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<'tous' | 'depot' | 'retrait'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,56 +113,110 @@ const SavingsAccountDetails = () => {
     }
   }, [savingsAccount, id]);
 
+  // 🆕 Fonction pour gérer les dépôts avec KKiaPay
+  const handleDepositSubmit = async (depositData: any) => {
+    try {
+      console.log('📝 Soumission dépôt:', depositData);
+      
+      // Créer le dépôt (sans paiement pour l'instant)
+      const response = await createDepositForPayment(id, {
+        montant: depositData.montant.toString(),
+        numero_telephone: depositData.numero_telephone,
+        commentaires: depositData.commentaires || `Dépôt via KKiaPay - ${depositData.montant.toLocaleString()} FCFA`
+      });
+      console.log('✅ Réponse dépôt:', response);
+      return response;
+      
+    } catch (error) {
+      console.error('❌ Erreur création dépôt:', error);
+      throw error;
+    }
+  };
+
+  // 🆕 Callback de succès de paiement KKiaPay pour dépôt
+  const handleDepositPaymentSuccess = async (kkiapayResponse: any, depositData: any) => {
+    try {
+      console.log('🎉 Paiement de dépôt réussi, confirmation en cours...', kkiapayResponse);
+      
+      // 🎉 TOAST DE SUCCÈS SPÉCIFIQUE AU DÉPÔT
+      toast.success('💰 Dépôt Mobile Money confirmé !', {
+        description: `${depositData.montant.toLocaleString()} FCFA ajouté à votre compte épargne`,
+        duration: 5000,
+      });
+      
+      // Confirmer le paiement auprès du backend
+      await confirmDepositPayment({
+        kkiapay_transaction_id: kkiapayResponse.transactionId,
+        internal_transaction_id: savingsAccount?.id || '',
+        reference: `DEP-${kkiapayResponse.transactionId}`,
+        amount: depositData.montant,
+        phone: depositData.numero_telephone,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        deposit_data: {
+          montant: depositData.montant.toString(),
+          numero_telephone: depositData.numero_telephone,
+          commentaires: depositData.commentaires
+        },
+        account_id: id
+      });
+
+      // Rafraîchir les détails du compte
+      await fetchSavingsAccountById(id);
+      
+      // 🎊 TOAST FINAL AVEC MISE À JOUR DU SOLDE
+      toast.success('🏦 Compte épargne mis à jour !', {
+        description: 'Votre nouveau solde est maintenant disponible',
+        duration: 4000,
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur confirmation dépôt:', error);
+    }
+  };
+  console.log("savingsAccount", savingsAccount);
+  // 🆕 Callback d'erreur de paiement KKiaPay pour dépôt
+  const handleDepositPaymentError = (error: any) => {
+    console.log('❌ Erreur de paiement de dépôt:', error);
+    toast.error(`❌ Dépôt échoué: ${error.message || 'Erreur inconnue'}`, {
+      description: 'Veuillez réessayer ou contacter le support',
+      duration: 6000,
+    });
+  };
+
   const handleWithdraw = async (withdrawData: any) => {
     try {
       setLoading(true);
       console.log('Processing withdrawal:', withdrawData);
-      // Here you would typically call your API to process the withdrawal
-      // For example: await api.processWithdrawal(account.id, withdrawData);
+      
+      // Appeler l'API pour effectuer le retrait
+      const result = await withdraw(id, {
+        montant: withdrawData.montant.toString(),
+        numero_telephone: withdrawData.numero_telephone,
+        motif_retrait: withdrawData.commentaire || 'Retrait depuis l\'interface client'
+      });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 🎉 TOAST DE SUCCÈS POUR RETRAIT
+      toast.success('💸 Retrait effectué avec succès !', {
+        description: `${withdrawData.montant.toLocaleString()} FCFA transféré vers ${withdrawData.numero_telephone}`,
+        duration: 5000,
+      });
 
-      // Update the UI to reflect the withdrawal
-      // For now, we'll just show a success message
-      alert('Retrait effectué avec succès');
       setIsWithdrawalModalOpen(false);
 
-      // Refresh account data
-      // await loadAccountData();
+      // Rafraîchir les données du compte
+      await fetchSavingsAccountById(id);
+      
     } catch (error) {
       console.error('Error processing withdrawal:', error);
-      alert('Une erreur est survenue lors du retrait');
+      toast.error('❌ Erreur lors du retrait', {
+        description: 'Veuillez vérifier votre solde et réessayer',
+        duration: 6000,
+      });
     } finally {
       setLoading(false);
     }
   };
-  const handleDeposit = async (depositData: any) => {
-    try {
-      setLoading(true);
-      console.log('Processing deposit:', depositData);
-      // Here you would typically call your API to process the deposit
-      // For example: await api.processDeposit(account.id, depositData);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update the UI to reflect the deposit
-      // For now, we'll just show a success message
-      alert('Dépôt effectué avec succès');
-      setIsDepositModalOpen(false);
-
-      // Refresh account data
-      // await loadAccountData();
-    } catch (error) {
-      console.error('Error processing deposit:', error);
-      alert('Une erreur est survenue lors du dépôt');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
 
   // Calculs statistiques
   const creationDate = savingsAccount?.dateCreation ? new Date(savingsAccount.dateCreation) : new Date();
@@ -204,6 +266,17 @@ const SavingsAccountDetails = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Chargement des détails du compte...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto p-6">
@@ -218,10 +291,10 @@ const SavingsAccountDetails = () => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900 mb-1">{savingsAccount?.accountNumber}</h1>
             <div className="flex items-center gap-4">
-              <span className="text-lg font-medium text-gray-600">{savingsAccount?.accountNumber}</span>
+              <span className="text-lg font-medium text-gray-600">{savingsAccount?.sfdName}</span>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-500">Dernière activité: {savingsAccount?.derniereMouvement ? format(new Date(savingsAccount.derniereMouvement), 'dd/MM/yyyy', { locale: fr }) : 'N/A'}</span>
+                <span className="text-sm text-gray-500">Dernière activité: {savingsAccount?.derniereMouvement ? format(new Date(savingsAccount.derniereMouvement), 'dd/MM/yyyy', { locale: fr }) : 'Aucune mouvement'}</span>
               </div>
             </div>
           </div>
@@ -266,26 +339,45 @@ const SavingsAccountDetails = () => {
                   <p className="text-lg text-gray-500">FCFA</p>
                 </div>
 
-                {/* Actions rapides */}
-                {savingsAccount?.statut === 'actif' && (
+                {/* Actions rapides avec KKiaPay */}
+                {savingsAccount?.statut === 'actif' ? (
                   <div className="grid grid-cols-2 gap-3">
-                    <GlassButton
-                      onClick={() => setIsDepositModalOpen(true)}
-                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                    >
-                      <ArrowUp size={16} className="mr-2" />
-                      Déposer
-                    </GlassButton>
-                    <GlassButton
-                      onClick={() => setIsWithdrawalModalOpen(true)}
-                      variant="outline"
-                    >
-                      <ArrowDown size={16} className="mr-2" />
-                      Retirer
-                    </GlassButton>
+                  <GlassButton
+                    onClick={() => setIsDepositModalOpen(true)}
+                    variant="outline"                    
+                  >
+                   Déposer
+                  </GlassButton>
+                  
+                  <GlassButton
+                    onClick={() => setIsWithdrawalModalOpen(true)}
+                    disabled={!savingsAccount || savingsAccount.statut !== 'actif' || (savingsAccount?.solde || 0) <= 0}
+                    variant="outline"
+                    className=''
+                  >
+                   Retirer
+                  </GlassButton>
                   </div>
+                  
+                ) : (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Clock className="text-blue-600" size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-800 mb-2">
+                        🏦 Compte en cours de création
+                      </p>
+                      <p className="text-xs text-blue-700 mb-3">
+                        Votre compte sera <strong>automatiquement activé</strong> dès le paiement des frais de création.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 )}
               </div>
+              
             </GlassCard>
           </div>
 
@@ -335,19 +427,36 @@ const SavingsAccountDetails = () => {
                 </div>
               </GlassCard>
 
-              {/* Croissance nette */}
+              {/* Solde actuel avec indicateur KKiaPay */}
               <GlassCard className="p-6 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <BarChart3 className="text-purple-600" size={20} />
+                    <CreditCard className="text-purple-600" size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Solde actuel</p>
-                    <p className="text-2xl font-bold text-purple-600">{savingsAccount?.solde.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">FCFA</p>
+                    <p className="text-sm font-medium text-gray-600">Paiements sécurisés</p>
+                    <p className="text-lg font-bold text-purple-600">KKiaPay Mobile Money</p>
+                    <p className="text-xs text-gray-500">MTN • Moov</p>
                   </div>
                 </div>
               </GlassCard>
+            </div>
+          </div>
+        </div>
+
+        {/* Message d'information KKiaPay */}
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <CreditCard className="h-6 w-6 text-blue-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  💳 Dépôts sécurisés avec KKiaPay Mobile Money
+                </p>
+                <p className="text-xs text-blue-600">
+                  Déposez instantanément depuis votre compte MTN Money ou Moov Money
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -405,7 +514,14 @@ const SavingsAccountDetails = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 mb-1">{transaction.description}</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-semibold text-gray-900">{transaction.description}</p>
+                                {transaction.type === 'depot' && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                    KKiaPay
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-1">
                                 <span className="flex items-center gap-1">
                                   <Calendar size={12} />
@@ -468,21 +584,25 @@ const SavingsAccountDetails = () => {
                 })}
               </div>
 
-              {/* État vide */}
-              {!savingsAccount?.transactions_recentes ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-lg font-medium text-gray-900 mb-2">Chargement des transactions...</p>
-                </div>
-              ) : filteredTransactions.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="text-gray-400" size={32} />
-                  </div>
-                  <p className="text-lg font-medium text-gray-900 mb-2">Aucune transaction trouvée</p>
-                  <p className="text-gray-500">Modifiez les filtres de recherche pour voir plus de résultats</p>
-                </div>
-              ) : null}
+{!savingsAccount ? (
+  <div className="text-center py-12">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+    <p className="text-lg font-medium text-gray-900 mb-2">Chargement du compte...</p>
+  </div>
+) : !savingsAccount.transactions_recentes || savingsAccount.transactions_recentes.length === 0 ? (
+  <div className="text-center py-12">
+    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <FileText className="text-gray-400" size={32} />
+    </div>
+    <p className="text-lg font-medium text-gray-900 mb-2">Aucune transaction trouvée</p>
+    <p className="text-gray-500">
+      {searchTerm || filter !== 'tous' 
+        ? "Modifiez les filtres de recherche pour voir plus de résultats"
+        : "Les transactions apparaîtront ici après vos premiers dépôts ou retraits"
+      }
+    </p>
+  </div>
+) : null}
             </GlassCard>
           </div>
 
@@ -509,7 +629,7 @@ const SavingsAccountDetails = () => {
                 </div>
               </div>
 
-              {savingsAccount?.eligibiliteCredit ? (
+              {savingsAccount?.eligibiliteCredit ?   (
                 <div>
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-purple-800 mb-2">
@@ -554,48 +674,40 @@ const SavingsAccountDetails = () => {
           </div>
         </div>
       </div>
-      {
-        isWithdrawalModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-              <button
-                onClick={() => setIsWithdrawalModalOpen(false)}
-                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-              >
-                ✕
-              </button>
-              <WithdrawalForm
-                isOpen={isWithdrawalModalOpen}
-                onClose={() => setIsWithdrawalModalOpen(false)}
-                details={savingsAccount}
-                loading={loading}
-                onSubmit={handleWithdraw}
-              />
-            </div>
+      
+      {/* Modal de retrait */}
+      {isWithdrawalModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
+            <button
+              onClick={() => setIsWithdrawalModalOpen(false)}
+              className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
+            >
+              ✕
+            </button>
+            <WithdrawalForm
+              isOpen={isWithdrawalModalOpen}
+              onClose={() => setIsWithdrawalModalOpen(false)}
+              details={savingsAccount}
+              loading={loading}
+              onSubmit={handleWithdraw}
+            />
           </div>
-        )
-      }
-      {
-        isDepositModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-lg p-6 w-full relative max-w-xl">
-              <button
-                onClick={() => setIsDepositModalOpen(false)}
-                className="absolute top-5 right-5 text-black hover:text-gray-800 cursor-pointer"
-              >
-                ✕
-              </button>
-              <DepositForm
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-                details={savingsAccount}
-                loading={loading}
-                onSubmit={handleDeposit}
-              />
-            </div>
-          </div>
-        )
-      }
+        </div>
+      )}
+      
+      {/* Modal de dépôt avec KKiaPay */}
+      {isDepositModalOpen && (
+        <DepositForm
+          isOpen={isDepositModalOpen}
+          onClose={() => setIsDepositModalOpen(false)}
+          details={savingsAccount}
+          loading={loading}
+          onSubmit={handleDepositSubmit}
+          onPaymentSuccess={handleDepositPaymentSuccess}
+          onPaymentError={handleDepositPaymentError}
+        />
+      )}
     </div>
   );
 };

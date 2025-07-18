@@ -1,534 +1,721 @@
 'use client'
-import * as React from 'react';
-import { useState } from 'react';
-import { LucideIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { 
   Users, 
-  Building2, 
-  TrendingUp, 
-  Shield, 
-  Settings, 
-  Activity,
-  Database,
-  Search,
-  Filter,
-  MoreVertical,
-  UserPlus,
-  Edit,
-  Trash2,
+  User, 
+  Search, 
+  Download, 
+  Plus,
   Eye,
-  EyeOff,
-  CheckCircle,
-  XCircle,
-  Mail,
+  UserCheck,
+  UserX,
+  Shield,
   Phone,
+  Mail,
+  MapPin,
   Calendar,
-  Download,
-  RefreshCw,
-  Globe
+  MoreVertical,
+  Key,
+  Ban,
+  Unlock,
+  Building,
+  UserCog,
+  Crown,
+  Briefcase
 } from 'lucide-react';
-import Link from 'next/link';
+
+// Import des hooks
+import { useClientsAPI } from '@/hooks/useClients';
+import { useAdminsPlateforme } from '@/hooks/gestion-users/useAdminsPlateforme';
 
 // Types
-type UserRole = 'client' | 'agent_sfd' | 'superviseur_sfd' | 'admin_sfd' | 'admin_platform';
-type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  role: UserRole;
-  status: UserStatus;
-  sfd: string;
-  joinDate: string;
-  lastLogin: string;
-  tontines?: number;
-  savings?: number;
-  validatedActions?: number;
-  managedLoans?: number;
-  managedSFD?: string;
+interface UserTab {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  count: number;
+  color: string;
 }
 
-interface Stats {
-  totalUsers: number;
-  activeUsers: number;
-  newThisMonth: number;
-  suspendedUsers: number;
-}
+// Fonction utilitaire pour formater les dates
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return 'N/A';
+  }
+};
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: LucideIcon;
-  color?: 'primary' | 'secondary' | 'destructive';
-  trend?: number;
-}
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return 'N/A';
+  }
+};
 
-interface UserRowProps {
-  user: User;
-  onSelectUser: (id: number, isSelected: boolean) => void;
-  isSelected: boolean;
-}
+const UsersManagement = () => {
+  const [activeTab, setActiveTab] = useState('clients');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
-const UserManagement = (): React.ReactElement => {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  // Hooks pour récupérer les données
+  const { 
+    clients, 
+    loading: clientsLoading, 
+    error: clientsError, 
+    fetchClients 
+  } = useClientsAPI();
 
-  // Données simulées des utilisateurs
-  const users: User[] = [
+  const { 
+    adminsplateforme, 
+    loading: adminsLoading, 
+    error: adminsError, 
+    fetchAdminsPlateforme 
+  } = useAdminsPlateforme();
+
+  // États pour les autres types d'utilisateurs (à implémenter avec de vrais hooks)
+  const [agentsSFD, setAgentsSFD] = useState([]);
+  const [superviseursSFD, setSuperviseursSFD] = useState([]);
+  const [adminsSFD, setAdminsSFD] = useState([]);
+
+  // Données mockées pour les utilisateurs non encore intégrés
+  const mockAgentsSFD = [
     {
-      id: 1,
-      name: "Jean Dupont",
-      email: "jean.dupont@email.com",
-      phone: "+229 97 12 34 56",
-      role: "client",
-      status: "active",
-      sfd: "CLCAM",
-      joinDate: "2024-01-15",
-      lastLogin: "2024-12-01T10:30:00",
-      tontines: 2,
-      savings: 1
+      id: 'AGT001',
+      nom: 'AHOYO',
+      prenom: 'Bernadette',
+      email: 'b.ahoyo@sfdportionovo.bj',
+      telephone: '+229 97 23 45 67',
+      adresse: 'Porto-Novo, Ouémé',
+      profession: 'Agent SFD',
+      statut: 'actif',
+      dateCreation: '2023-01-10T09:00:00Z',
+      derniere_connexion: '2025-06-12T14:20:00Z',
+      clientsGeres: 45,
+      performanceScore: 92
     },
     {
-      id: 2,
-      name: "Marie Agbodji",
-      email: "marie.agbodji@clcam.bj",
-      phone: "+229 96 45 67 89",
-      role: "agent_sfd",
-      status: "active",
-      sfd: "CLCAM",
-      joinDate: "2023-11-20",
-      lastLogin: "2024-12-01T14:15:00",
-      validatedActions: 234
-    },
-    {
-      id: 3,
-      name: "Pierre Koudou",
-      email: "pierre.koudou@coopec.bj",
-      phone: "+229 95 78 90 12",
-      role: "superviseur_sfd",
-      status: "active",
-      sfd: "Coopec",
-      joinDate: "2023-08-10",
-      lastLogin: "2024-12-01T09:45:00",
-      managedLoans: 45
-    },
-    {
-      id: 4,
-      name: "Fatou Bello",
-      email: "fatou.bello@fescoop.bj",
-      phone: "+229 94 23 45 67",
-      role: "admin_sfd",
-      status: "active",
-      sfd: "Fescoop",
-      joinDate: "2023-06-05",
-      lastLogin: "2024-11-30T16:20:00",
-      managedSFD: "Fescoop"
-    },
-    {
-      id: 5,
-      name: "Codjo Akpaki",
-      email: "codjo.akpaki@email.com",
-      phone: "+229 93 56 78 90",
-      role: "client",
-      status: "suspended",
-      sfd: "CLCAM",
-      joinDate: "2024-02-28",
-      lastLogin: "2024-11-25T11:00:00",
-      tontines: 1,
-      savings: 0
+      id: 'AGT002',
+      nom: 'KPADE',
+      prenom: 'Michel',
+      email: 'm.kpade@sfdportionovo.bj',
+      telephone: '+229 94 56 78 90',
+      adresse: 'Bohicon, Zou',
+      profession: 'Agent SFD',
+      statut: 'suspendu',
+      dateCreation: '2023-11-05T11:20:00Z',
+      derniere_connexion: '2025-05-28T09:15:00Z',
+      clientsGeres: 32,
+      performanceScore: 65
     }
   ];
 
-  const stats: Stats = {
-    totalUsers: 12847,
-    activeUsers: 11923,
-    newThisMonth: 234,
-    suspendedUsers: 45
+  const mockSuperviseursSFD = [
+    {
+      id: 'SUP001',
+      nom: 'DOSSA',
+      prenom: 'Paulin',
+      email: 'p.dossa@sfdportionovo.bj',
+      telephone: '+229 96 34 56 78',
+      adresse: 'Parakou, Borgou',
+      profession: 'Superviseur SFD',
+      statut: 'actif',
+      dateCreation: '2022-08-20T14:15:00Z',
+      derniere_connexion: '2025-06-12T13:10:00Z',
+      pretsSupervises: 156,
+      tauxApprobation: 91.0
+    }
+  ];
+
+  const mockAdminsSFD = [
+    {
+      id: 'ASFD001',
+      nom: 'HOUNSOU',
+      prenom: 'Charles',
+      email: 'c.hounsou@sfdportionovo.bj',
+      telephone: '+229 95 11 22 33',
+      adresse: 'Cotonou, Littoral',
+      profession: 'Administrateur SFD',
+      statut: 'actif',
+      dateCreation: '2022-01-15T10:00:00Z',
+      derniere_connexion: '2025-06-12T16:45:00Z',
+      sfdGere: 'SFD Porto-Novo',
+      permissions: ['gestion_tontines', 'validation_prets', 'gestion_agents']
+    }
+  ];
+
+  // Configuration des onglets
+  const tabs: UserTab[] = [
+    {
+      id: 'clients',
+      label: 'Clients',
+      icon: User,
+      count: clients.length,
+      color: 'blue'
+    },
+    {
+      id: 'agents',
+      label: 'Agents SFD',
+      icon: UserCog,
+      count: mockAgentsSFD.length,
+      color: 'emerald'
+    },
+    {
+      id: 'superviseurs',
+      label: 'Superviseurs SFD',
+      icon: Shield,
+      count: mockSuperviseursSFD.length,
+      color: 'purple'
+    },
+    {
+      id: 'admins-sfd',
+      label: 'Admins SFD',
+      icon: Building,
+      count: mockAdminsSFD.length,
+      color: 'orange'
+    },
+    {
+      id: 'admins-plateforme',
+      label: 'Admins Plateforme',
+      icon: Crown,
+      count: adminsplateforme.length,
+      color: 'red'
+    }
+  ];
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    fetchClients();
+    fetchAdminsPlateforme();
+  }, []);
+
+  // Fonction pour obtenir les données de l'onglet actif
+  const getActiveTabData = () => {
+    switch (activeTab) {
+      case 'clients':
+        return {
+          data: clients,
+          loading: clientsLoading,
+          error: clientsError
+        };
+      case 'agents':
+        return {
+          data: mockAgentsSFD,
+          loading: false,
+          error: null
+        };
+      case 'superviseurs':
+        return {
+          data: mockSuperviseursSFD,
+          loading: false,
+          error: null
+        };
+      case 'admins-sfd':
+        return {
+          data: mockAdminsSFD,
+          loading: false,
+          error: null
+        };
+      case 'admins-plateforme':
+        return {
+          data: adminsplateforme,
+          loading: adminsLoading,
+          error: adminsError
+        };
+      default:
+        return { data: [], loading: false, error: null };
+    }
   };
 
-  const roleLabels: Record<UserRole, string> = {
-    client: 'Client',
-    agent_sfd: 'Agent SFD',
-    superviseur_sfd: 'Superviseur SFD',
-    admin_sfd: 'Admin SFD',
-    admin_platform: 'Admin Plateforme'
-  };
-
-  const statusLabels: Record<UserStatus, string> = {
-    active: 'Actif',
-    inactive: 'Inactif',
-    suspended: 'Suspendu',
-    pending: 'En attente'
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.phone.includes(searchTerm);
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-    const matchesStatus = selectedStatus === 'all' || user.status === selectedStatus;
+  // Filtrer les données selon la recherche et le statut
+  const getFilteredData = () => {
+    const { data } = getActiveTabData();
     
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+    return data.filter((user: any) => {
+      const matchesSearch = 
+        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.telephone?.includes(searchTerm);
+      
+      const matchesStatus = statusFilter === 'all' || 
+        user.statut === statusFilter || 
+        user.est_actif === (statusFilter === 'actif');
+      
+      return matchesSearch && matchesStatus;
+    });
+  };
 
-  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color = "primary", trend }) => (
-    <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-archivo text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          {trend && (
-            <p className={`text-xs font-archivo mt-1 ${trend > 0 ? 'text-green-600' : 'text-red-500'}`}>
-              {trend > 0 ? '+' : ''}{trend}% ce mois
-            </p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${color === 'primary' ? 'bg-primary/10' : color === 'secondary' ? 'bg-accent/20' : 'bg-destructive/10'}`}>
-          <Icon className={`w-6 h-6 ${color === 'primary' ? 'text-primary' : color === 'secondary' ? 'text-accent-foreground' : 'text-destructive'}`} />
+  // Fonction pour obtenir le badge de statut
+  const getStatusBadge = (user: any) => {
+    const statut = user.statut || (user.est_actif ? 'actif' : 'inactif');
+    
+    switch (statut) {
+      case 'actif':
+        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Actif</span>;
+      case 'inactif':
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Inactif</span>;
+      case 'suspendu':
+        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Suspendu</span>;
+      default:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Inconnu</span>;
+    }
+  };
+
+  // Fonction pour rendre les informations spécifiques selon le type d'utilisateur
+  const renderUserSpecificInfo = (user: any) => {
+    switch (activeTab) {
+      case 'clients':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Score: {user.scorefiabilite || 'N/A'}/100</div>
+            <div>Tontines: {user.tontines_count || 0}</div>
+            <div className="text-xs text-gray-500">
+              Inscrit le {formatDate(user.dateCreation)}
+            </div>
+          </div>
+        );
+      case 'agents':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Clients gérés: {user.clientsGeres}</div>
+            <div>Performance: {user.performanceScore}%</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'superviseurs':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Prêts supervisés: {user.pretsSupervises}</div>
+            <div>Taux approbation: {user.tauxApprobation}%</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'admins-sfd':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>SFD: {user.sfdGere}</div>
+            <div>Permissions: {user.permissions?.length || 0}</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'admins-plateforme':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Gestion comptes: {user.peut_gerer_comptes ? 'Oui' : 'Non'}</div>
+            <div>Gestion SFD: {user.peut_gerer_sfd ? 'Oui' : 'Non'}</div>
+            <div className="text-xs text-gray-500">
+              Super administrateur
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Actions sur les utilisateurs
+  const handleUserAction = async (userId: string, action: string) => {
+    try {
+      // Simulation d'action API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      let message = '';
+      switch (action) {
+        case 'activate':
+          message = 'Utilisateur activé avec succès';
+          break;
+        case 'deactivate':
+          message = 'Utilisateur désactivé avec succès';
+          break;
+        case 'suspend':
+          message = 'Utilisateur suspendu avec succès';
+          break;
+        case 'resetPassword':
+          message = 'Mot de passe réinitialisé - Lien envoyé par SMS';
+          break;
+        default:
+          message = 'Action effectuée avec succès';
+      }
+      
+      toast.success(message);
+    } catch (error) {
+      toast.error('Erreur lors de l\'action');
+    }
+  };
+
+  const { data: currentData, loading, error } = getActiveTabData();
+  const filteredData = getFilteredData();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des utilisateurs...</p>
         </div>
       </div>
-    </div>
-  );
-
-  const UserRow: React.FC<UserRowProps> = ({ user, onSelectUser, isSelected }) => {
-    const getStatusBadge = (status: UserStatus): React.ReactNode => {
-      const styles = {
-        active: 'bg-green-100 text-green-800',
-        inactive: 'bg-gray-100 text-gray-800',
-        suspended: 'bg-red-100 text-red-800',
-        pending: 'bg-yellow-100 text-yellow-800'
-      };
-      
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs font-archivo font-medium ${styles[status]}`}>
-          {statusLabels[status]}
-        </span>
-      );
-    };
-
-    const getRoleBadge = (role: UserRole): React.ReactNode => {
-      const styles = {
-        client: 'bg-blue-100 text-blue-800',
-        agent_sfd: 'bg-purple-100 text-purple-800',
-        superviseur_sfd: 'bg-orange-100 text-orange-800',
-        admin_sfd: 'bg-red-100 text-red-800',
-        admin_platform: 'bg-gray-100 text-gray-800'
-      };
-      
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs font-archivo font-medium ${styles[role]}`}>
-          {roleLabels[role]}
-        </span>
-      );
-    };
-
-    return (
-      <tr className="hover:bg-accent/10 transition-colors">
-        <td className="px-6 py-4">
-          <input
-            type="checkbox"
-            className="rounded border-gray-300 text-primary focus:ring-primary"
-            checked={selectedUsers.includes(user.id)}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setSelectedUsers([...selectedUsers, user.id]);
-              } else {
-                setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-              }
-            }}
-          />
-        </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-archivo font-medium text-foreground">{user.name}</p>
-              <p className="font-archivo text-sm text-muted-foreground">{user.email}</p>
-            </div>
-          </div>
-        </td>
-        <td className="px-6 py-4">
-          <span className="font-archivo text-sm text-foreground">{user.phone}</span>
-        </td>
-        <td className="px-6 py-4 text-nowrap">
-          {getRoleBadge(user.role)}
-        </td>
-        <td className="px-6 py-4">
-          {getStatusBadge(user.status)}
-        </td>
-        <td className="px-6 py-4">
-          <span className="font-archivo text-sm text-foreground">{user.sfd}</span>
-        </td>
-        <td className="px-6 py-4">
-          <span className="font-archivo text-sm text-muted-foreground">
-            {new Date(user.joinDate).toLocaleDateString('fr-FR')}
-          </span>
-        </td>
-        <td className="px-6 py-4">
-          <span className="font-archivo text-sm text-muted-foreground">
-            {new Date(user.lastLogin).toLocaleDateString('fr-FR')}
-          </span>
-        </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center space-x-2">
-            <button className="p-1 hover:bg-primary/10 rounded">
-              <Eye className="w-4 h-4 text-primary" />
-            </button>
-            <button className="p-1 hover:bg-primary/10 rounded">
-              <Edit className="w-4 h-4 text-primary" />
-            </button>
-            <button className="p-1 hover:bg-red-100 rounded">
-              <Trash2 className="w-4 h-4 text-red-500" />
-            </button>
-          </div>
-        </td>
-      </tr>
     );
-  };
+  }
 
   return (
-    <div className="min-h-screen">
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">
-                  Gestion des utilisateurs
-                </h1>
-                <p className="font-archivo text-muted-foreground">
-                  Gérez tous les utilisateurs de la plateforme TontiFlex
-                </p>
-              </div>
-              <Link href="/dashboards/dashboard-admin_tontiflex/utilisateurs/new-user" className="flex items-center space-x-3">
-                <button 
-                  className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="font-archivo text-sm">Nouveau utilisateur</span>
-                </button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard
-              title="Total utilisateurs"
-              value={stats.totalUsers.toLocaleString('fr-FR')}
-              icon={Users}
-              trend={8}
-            />
-            <StatCard
-              title="Utilisateurs actifs"
-              value={stats.activeUsers.toLocaleString('fr-FR')}
-              icon={CheckCircle}
-              color="secondary"
-              trend={5}
-            />
-            <StatCard
-              title="Nouveaux ce mois"
-              value={stats.newThisMonth}
-              icon={UserPlus}
-              trend={12}
-            />
-            <StatCard
-              title="Comptes suspendus"
-              value={stats.suspendedUsers}
-              icon={XCircle}
-              color="destructive"
-              trend={-3}
-            />
-          </div>
-
-          {/* Filtres et recherche */}
-          <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg p-6 shadow-lg mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Rechercher par nom, email ou téléphone..."
-                    className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                
-                <select
-                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  <option value="all">Tous les rôles</option>
-                  <option value="client">Clients</option>
-                  <option value="agent_sfd">Agents SFD</option>
-                  <option value="superviseur_sfd">Superviseurs SFD</option>
-                  <option value="admin_sfd">Admins SFD</option>
-                  <option value="admin_platform">Admins Plateforme</option>
-                </select>
-                
-                <select
-                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg font-archivo text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="active">Actifs</option>
-                  <option value="inactive">Inactifs</option>
-                  <option value="suspended">Suspendus</option>
-                  <option value="pending">En attente</option>
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <span className="font-archivo text-sm text-muted-foreground">
-                  {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''}
+    <div className="min-h-screen p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Navigation par onglets */}
+        <GlassCard className="p-1">
+          <div className="flex flex-wrap gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                  activeTab === tab.id
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                }`}
+              >
+                <tab.icon size={16} />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  activeTab === tab.id 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {tab.count}
                 </span>
-                <button className="p-2 hover:bg-primary/10 rounded-lg transition-colors">
-                  <RefreshCw className="w-4 h-4 text-primary" />
-                </button>
-              </div>
-            </div>
-
-            {selectedUsers.length > 0 && (
-              <div className="mt-4 flex items-center space-x-4 p-3 bg-primary/10 rounded-lg">
-                <span className="font-archivo text-sm text-primary">
-                  {selectedUsers.length} utilisateur{selectedUsers.length > 1 ? 's' : ''} sélectionné{selectedUsers.length > 1 ? 's' : ''}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <button className="px-3 py-1 bg-green-500 text-white rounded font-archivo text-sm hover:bg-green-600 transition-colors">
-                    Activer
-                  </button>
-                  <button className="px-3 py-1 bg-yellow-500 text-white rounded font-archivo text-sm hover:bg-yellow-600 transition-colors">
-                    Suspendre
-                  </button>
-                  <button className="px-3 py-1 bg-red-500 text-white rounded font-archivo text-sm hover:bg-red-600 transition-colors">
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            )}
+              </button>
+            ))}
           </div>
+        </GlassCard>
 
-          {/* Table des utilisateurs */}
-          <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50/80">
-                  <tr>
-                    <th className="px-6 py-3">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUsers(filteredUsers.map(u => u.id));
-                          } else {
-                            setSelectedUsers([]);
-                          }
-                        }}
-                        checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Utilisateur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Téléphone
-                    </th>
-                    <th className="px-6  py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Rôle
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      SFD
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Inscription
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Dernière connexion
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-archivo font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white/50 divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
-                    <UserRow 
-                      key={user.id} 
-                      user={user} 
-                      isSelected={selectedUsers.includes(user.id)}
-                      onSelectUser={(id, isSelected) => {
-                        if (isSelected) {
-                          setSelectedUsers([...selectedUsers, id]);
-                        } else {
-                          setSelectedUsers(selectedUsers.filter(selectedId => selectedId !== id));
-                        }
-                      }}
-                    />
-                  ))}
-                </tbody>
-              </table>
+        {/* Statistiques rapides */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <GlassCard className="p-4 text-center border-l-4 border-l-blue-500">
+            <div className="text-2xl font-bold text-blue-600 mb-1">
+              {clients.length}
             </div>
-            
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="mx-auto w-12 h-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun utilisateur trouvé</h3>
-                <p className="font-archivo text-gray-500">Essayez de modifier vos critères de recherche</p>
+            <div className="text-sm text-gray-600">Clients</div>
+          </GlassCard>
+          
+          <GlassCard className="p-4 text-center border-l-4 border-l-emerald-500">
+            <div className="text-2xl font-bold text-emerald-600 mb-1">
+              {mockAgentsSFD.length}
+            </div>
+            <div className="text-sm text-gray-600">Agents SFD</div>
+          </GlassCard>
+          
+          <GlassCard className="p-4 text-center border-l-4 border-l-purple-500">
+            <div className="text-2xl font-bold text-purple-600 mb-1">
+              {mockSuperviseursSFD.length}
+            </div>
+            <div className="text-sm text-gray-600">Superviseurs</div>
+          </GlassCard>
+
+          <GlassCard className="p-4 text-center border-l-4 border-l-orange-500">
+            <div className="text-2xl font-bold text-orange-600 mb-1">
+              {mockAdminsSFD.length}
+            </div>
+            <div className="text-sm text-gray-600">Admins SFD</div>
+          </GlassCard>
+          
+          <GlassCard className="p-4 text-center border-l-4 border-l-red-500">
+            <div className="text-2xl font-bold text-red-600 mb-1">
+              {adminsplateforme.length}
+            </div>
+            <div className="text-sm text-gray-600">Admins Plateforme</div>
+          </GlassCard>
+        </div>
+
+        {/* Filtres et contrôles */}
+        <div className="mt-8">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              {/* Barre de recherche */}
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Rechercher un utilisateur..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full bg-white/60 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                />
               </div>
-            )}
-          </div>
 
-          {/* Pagination */}
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="font-archivo text-sm text-muted-foreground">Affichage de</span>
-              <select className="px-2 py-1 border border-gray-200 rounded font-archivo text-sm">
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-                <option>100</option>
-              </select>
-              <span className="font-archivo text-sm text-muted-foreground">utilisateurs par page</span>
+              {/* Filtre par statut */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 bg-white/60">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="actif">Actif</SelectItem>
+                  <SelectItem value="inactif">Inactif</SelectItem>
+                  <SelectItem value="suspendu">Suspendu</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 border border-gray-200 rounded font-archivo text-sm hover:bg-gray-50 transition-colors">
-                Précédent
-              </button>
-              <button className="px-3 py-1 bg-primary text-white rounded font-archivo text-sm">
-                1
-              </button>
-              <button className="px-3 py-1 border border-gray-200 rounded font-archivo text-sm hover:bg-gray-50 transition-colors">
-                2
-              </button>
-              <button className="px-3 py-1 border border-gray-200 rounded font-archivo text-sm hover:bg-gray-50 transition-colors">
-                3
-              </button>
-              <button className="px-3 py-1 border border-gray-200 rounded font-archivo text-sm hover:bg-gray-50 transition-colors">
-                Suivant
-              </button>
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <GlassButton variant="outline" size="sm">
+                <Download className="mr-2" size={16} />
+                Exporter
+              </GlassButton>
+              
+              <GlassButton size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2" size={16} />
+                Nouvel utilisateur
+              </GlassButton>
             </div>
           </div>
         </div>
+
+        {/* Liste des utilisateurs */}
+        <div className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-emerald-50/50 border-b border-emerald-200">
+                <tr>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Utilisateur</th>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Contact</th>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Statut</th>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Informations</th>
+                  <th className="text-right p-4 font-semibold text-emerald-800">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredData.map((user: any) => (
+                  <tr key={user.id} className="hover:bg-white/50 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                          <User size={20} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {user.prenom} {user.nom}
+                          </div>
+                          <div className="text-sm text-gray-500">ID: {user.id}</div>
+                          <div className="text-xs text-gray-500">{user.profession}</div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <td className="p-4">
+                      <div className="space-y-1 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Phone size={12} className="text-gray-400" />
+                          {user.telephone}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Mail size={12} className="text-gray-400" />
+                          {user.email}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin size={12} className="text-gray-400" />
+                          {user.adresse}
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <td className="p-4">
+                      {getStatusBadge(user)}
+                    </td>
+                    
+                    <td className="p-4">
+                      {renderUserSpecificInfo(user)}
+                    </td>
+                    
+                    <td className="p-4">
+                      <div className="flex items-center gap-2 justify-end">
+                        <GlassButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowDetails(true);
+                          }}
+                        >
+                          <Eye size={14} className="mr-1" />
+                          Voir
+                        </GlassButton>
+                        
+                        <div className="relative group">
+                          <GlassButton variant="outline" size="sm">
+                            <MoreVertical size={14} />
+                          </GlassButton>
+                          
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                            <div className="py-1">
+                              <button 
+                                onClick={() => handleUserAction(user.id, 'resetPassword')}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Key size={14} />
+                                Réinitialiser mot de passe
+                              </button>
+                              <button 
+                                onClick={() => handleUserAction(user.id, 'activate')}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <UserCheck size={14} />
+                                Modifier statut
+                              </button>
+                              <hr className="my-1" />
+                              <button 
+                                onClick={() => handleUserAction(user.id, 'suspend')}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                              >
+                                <Ban size={14} />
+                                Suspendre
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {filteredData.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="mx-auto mb-4 text-gray-400" size={48} />
+              <p className="text-gray-600 text-lg mb-2">Aucun utilisateur trouvé</p>
+              <p className="text-gray-500">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Essayez de modifier vos filtres' 
+                  : 'Aucun utilisateur de ce type enregistré'
+                }
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal de détails utilisateur */}
+        {showDetails && selectedUser && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold">
+                  Profil de {selectedUser.prenom} {selectedUser.nom}
+                </h3>
+                <button
+                  onClick={() => setShowDetails(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold mb-3">Informations personnelles</h4>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>Nom complet:</strong> {selectedUser.prenom} {selectedUser.nom}</div>
+                      <div><strong>Email:</strong> {selectedUser.email}</div>
+                      <div><strong>Téléphone:</strong> {selectedUser.telephone}</div>
+                      <div><strong>Adresse:</strong> {selectedUser.adresse}</div>
+                      <div><strong>Profession:</strong> {selectedUser.profession}</div>
+                      <div><strong>Statut:</strong> {getStatusBadge(selectedUser)}</div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-3">Informations spécifiques</h4>
+                    <div className="space-y-2 text-sm">
+                      {activeTab === 'clients' && (
+                        <>
+                          <div><strong>Score de fiabilité:</strong> {selectedUser.scorefiabilite}/100</div>
+                          <div><strong>Nombre de tontines:</strong> {selectedUser.tontines_count || 0}</div>
+                          <div><strong>Email vérifié:</strong> {selectedUser.email_verifie ? 'Oui' : 'Non'}</div>
+                        </>
+                      )}
+                      {activeTab === 'agents' && (
+                        <>
+                          <div><strong>Clients gérés:</strong> {selectedUser.clientsGeres}</div>
+                          <div><strong>Score de performance:</strong> {selectedUser.performanceScore}%</div>
+                        </>
+                      )}
+                      {activeTab === 'superviseurs' && (
+                        <>
+                          <div><strong>Prêts supervisés:</strong> {selectedUser.pretsSupervises}</div>
+                          <div><strong>Taux d'approbation:</strong> {selectedUser.tauxApprobation}%</div>
+                        </>
+                      )}
+                      {activeTab === 'admins-sfd' && (
+                        <>
+                          <div><strong>SFD géré:</strong> {selectedUser.sfdGere}</div>
+                          <div><strong>Permissions:</strong> {selectedUser.permissions?.join(', ')}</div>
+                        </>
+                      )}
+                      {activeTab === 'admins-plateforme' && (
+                        <>
+                          <div><strong>Gestion des comptes:</strong> {selectedUser.peut_gerer_comptes ? 'Autorisé' : 'Non autorisé'}</div>
+                          <div><strong>Gestion des SFD:</strong> {selectedUser.peut_gerer_sfd ? 'Autorisé' : 'Non autorisé'}</div>
+                        </>
+                      )}
+                      <div><strong>Date de création:</strong> {formatDateTime(selectedUser.dateCreation)}</div>
+                      {selectedUser.derniere_connexion && (
+                        <div><strong>Dernière connexion:</strong> {formatDateTime(selectedUser.derniere_connexion)}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 p-6 border-t">
+                <GlassButton variant="outline" onClick={() => setShowDetails(false)}>
+                  Fermer
+                </GlassButton>
+                <GlassButton className="bg-emerald-600 hover:bg-emerald-700">
+                  Modifier
+                </GlassButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message d'erreur */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+            <p className="text-red-600">Erreur: {error}</p>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default UserManagement;
+export default UsersManagement;

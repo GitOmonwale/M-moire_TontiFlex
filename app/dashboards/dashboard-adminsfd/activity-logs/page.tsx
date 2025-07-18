@@ -527,11 +527,11 @@ const ActivityLogPage = () => {
                     <div><strong>Type d'action:</strong> {selectedAction.objet}</div>
                     <div><strong>Catégorie:</strong> {getCategoryLabel(selectedAction.categorie)}</div>
                     
-                    {Object.entries(selectedAction.details).map(([key, value]) => (
+                    {/* {Object.entries(selectedAction.details).map(([key, value]) => (
                       <div key={key}>
                         <strong>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:</strong> {value}
                       </div>
-                    ))}
+                    ))} */}
                   </div>
                 </div>
                 

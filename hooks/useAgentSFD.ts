@@ -1,488 +1,466 @@
-// hooks/useAgentSFD.ts
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  DemandeAdhesion, 
-  DemandeRetrait, 
-  DemandeCompteEpargne, 
-  ActionHistorique,
-  StatistiquesPeriode,
-  FiltresAgent,
-  ValidationRequest,
-  RejetRequest,
-  ApiResponse
-} from '@/types/agent-sfd';
+import { useAuth } from '../contexts/AuthContext';
+import { AgentSFDAdmin, AgentSFDResponse, AgentActionsResponse, AgentsSFDFilters, StatistiquesDashboard, PaginatedAgentSFDResponseList, AgentAction, AgentSFDCreate } from '../types/agents-sfd';
 
-// Interface pour les statistiques du dashboard
-interface StatsDashboard {
-  demandesEnAttente: number;
-  demandesValidees: number;
-  retraitsEnAttente: number;
-  comptesEpargneEnAttente: number;
-  montantEnAttente: number;
-  tauxValidation: number;
-  tempsTraitementMoyen: number;
+interface ApiError {
+  message: string;
+  status?: number;
 }
 
-// Hook principal pour l'agent SFD
-export const useAgentSFD = () => {
+const API_BASE_URL = 'https://tontiflexapp.onrender.com/api';
+
+// Hook principal pour la gestion des agents SFD
+export const useAgentsSFDManagement = () => {
   // États pour les données
-  const [demandesAdhesion, setDemandesAdhesion] = useState<DemandeAdhesion[]>([]);
-  const [demandesRetrait, setDemandesRetrait] = useState<DemandeRetrait[]>([]);
-  const [demandesCompteEpargne, setDemandesCompteEpargne] = useState<DemandeCompteEpargne[]>([]);
-  const [historiqueActions, setHistoriqueActions] = useState<ActionHistorique[]>([]);
-  const [statistiques, setStatistiques] = useState<StatistiquesPeriode | null>(null);
-  const [statsDashboard, setStatsDashboard] = useState<StatsDashboard | null>(null);
+  const [agents, setAgents] = useState<PaginatedAgentSFDResponseList | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentSFDResponse | null>(null);
+  const [agentActions, setAgentActions] = useState<AgentActionsResponse | null>(null);
+  const [myActions, setMyActions] = useState<AgentActionsResponse | null>(null);
+  const [searchResults, setSearchResults] = useState<AgentSFDResponse[] | null>(null);
+  const [statistics, setStatistics] = useState<StatistiquesDashboard | null>(null);
   
   // États pour le chargement et les erreurs
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [actionError, setActionError] = useState<ApiError | null>(null);
   
   // États pour les filtres
-  const [filtres, setFiltres] = useState<FiltresAgent>({
-    searchTerm: '',
-    status: 'all',
-    priorite: 'all',
-    periode: '30j',
-    type: 'all'
-  });
+  const [filters, setFilters] = useState<AgentsSFDFilters>({ page: 1 });
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const { accessToken } = useAuth();
 
-  // Fonction pour charger les statistiques du dashboard
-  const loadDashboardStats = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Simulation d'un appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const stats: StatsDashboard = {
-        demandesEnAttente: 12,
-        demandesValidees: 156,
-        retraitsEnAttente: 8,
-        comptesEpargneEnAttente: 5,
-        montantEnAttente: 2450000,
-        tauxValidation: 94,
-        tempsTraitementMoyen: 65
-      };
-      
-      setStatsDashboard(stats);
-    } catch (err) {
-      setError('Erreur lors du chargement des statistiques');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Fonction pour charger la liste des agents
+  const loadAgents = useCallback(async (customFilters?: AgentsSFDFilters) => {
+    if (!accessToken) return;
+    
+    setIsLoading(true);
+    setError(null);
 
-  // Fonction pour charger les demandes d'adhésion
-  const loadDemandesAdhesion = useCallback(async (filters?: Partial<FiltresAgent>) => {
-    setLoading(true);
     try {
-      // Simulation d'un appel API
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Données mockées - en production, remplacer par un appel API réel
-      const mockData: DemandeAdhesion[] = [
-        {
-          id: 1,
-          clientId: "CLI001",
-          clientName: "Fatou KONE",
-          telephone: "+229 97 12 34 56",
-          email: "fatou.kone@email.com",
-          adresse: "Quartier Agblédo, Cotonou",
-          profession: "Commerçante",
-          tontine: {
-            id: "TON001",
-            name: "Tontine ALAFIA",
-            type: "Épargne"
-          },
-          montantMise: 1500,
-          datedemande: "2025-06-20T08:30:00Z",
-          pieceIdentite: {
-            recto: "CNI_123456789_recto.jpg",
-            verso: "CNI_123456789_verso.jpg",
-            type: "CNI"
-          },
-          status: "en_attente",
-          priorite: "urgente",
-          notes: "Client VIP - Traiter en priorité",
-          limitesMise: { min: 500, max: 5000 },
-          fraisAdhesion: 1000
+      const filtersToUse = customFilters || filters;
+      const searchParams = new URLSearchParams();
+      Object.entries(filtersToUse).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
         }
-        // Ajouter d'autres données mockées...
-      ];
-      
-      setDemandesAdhesion(mockData);
-    } catch (err) {
-      setError('Erreur lors du chargement des demandes d\'adhésion');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      });
 
-  // Fonction pour valider une adhésion
-  const validerAdhesion = useCallback(async (request: ValidationRequest): Promise<boolean> => {
-    setLoading(true);
+      const url = `${API_BASE_URL}/admin/agents-sfd/?${searchParams.toString()}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data: PaginatedAgentSFDResponseList = await response.json();
+      setAgents(data);
+    } catch (err) {
+      setError({
+        message: err instanceof Error ? err.message : 'Erreur lors du chargement des agents SFD',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accessToken, filters]);
+
+  // Fonction pour charger un agent spécifique
+  const loadAgent = useCallback(async (agentId: string) => {
+    if (!accessToken || !agentId) return;
+    
+    setIsLoading(true);
+    setError(null);
+
     try {
-      // Simulation d'un appel API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/${agentId}/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data: AgentSFDResponse = await response.json();
+      setSelectedAgent(data);
+    } catch (err) {
+      setError({
+        message: err instanceof Error ? err.message : 'Erreur lors du chargement de l\'agent',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accessToken]);
+
+  // Fonction pour charger les actions d'un agent
+  const loadAgentActions = useCallback(async (agentId: string) => {
+    if (!accessToken || !agentId) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/${agentId}/actions/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data: AgentActionsResponse = await response.json();
+      setAgentActions(data);
+    } catch (err) {
+      setError({
+        message: err instanceof Error ? err.message : 'Erreur lors du chargement des actions',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accessToken]);
+
+  // Fonction pour charger mes actions (agent connecté)
+  const loadMyActions = useCallback(async () => {
+    if (!accessToken) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/me/actions/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data: AgentActionsResponse = await response.json();
+      setMyActions(data);
+    } catch (err) {
+      setError({
+        message: err instanceof Error ? err.message : 'Erreur lors du chargement de vos actions',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accessToken]);
+
+  // Fonction pour créer un agent
+  const createAgent = useCallback(async (data: AgentSFDCreate): Promise<AgentSFDResponse | null> => {
+    if (!accessToken) {
+      setActionError({ message: 'Token d\'accès manquant' });
+      return null;
+    }
+
+    setIsActionLoading(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 400) {
+          throw new Error(errorData.detail || errorData.message || 'Erreur de validation');
+        }
+        throw new Error(errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const agent: AgentSFDResponse = await response.json();
       
-      // En production, remplacer par un appel API réel
-      // const response = await api.post('/agent-sfd/adhesions/valider', request);
+      // Rafraîchir la liste
+      await loadAgents();
       
-      // Mettre à jour l'état local
-      setDemandesAdhesion(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'validee' as const }
-            : demande
-        )
-      );
+      return agent;
+    } catch (err) {
+      setActionError({
+        message: err instanceof Error ? err.message : 'Erreur lors de la création de l\'agent',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+      return null;
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [accessToken, loadAgents]);
+
+  // Fonction pour mettre à jour un agent (PATCH)
+  const updateAgent = useCallback(async (
+    agentId: string, 
+    data: Partial<AgentSFDAdmin>
+  ): Promise<AgentSFDAdmin | null> => {
+    if (!accessToken) {
+      setActionError({ message: 'Token d\'accès manquant' });
+      return null;
+    }
+
+    setIsActionLoading(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/${agentId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const agent: AgentSFDAdmin = await response.json();
       
-      // Ajouter à l'historique
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'adhesion',
-        action: 'validation',
-        clientName: demandesAdhesion.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesAdhesion.find(d => d.id === request.id)?.clientId || '',
-        details: 'Adhésion validée avec succès',
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 120) + 15,
-        status: 'completed'
-      };
+      // Rafraîchir les données
+      await loadAgents();
+      if (selectedAgent?.agentId === agentId) {
+        await loadAgent(agentId);
+      }
       
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
+      return agent;
+    } catch (err) {
+      setActionError({
+        message: err instanceof Error ? err.message : 'Erreur lors de la mise à jour de l\'agent',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
+      return null;
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [accessToken, loadAgents, loadAgent, selectedAgent]);
+
+  // Fonction pour supprimer un agent
+  const deleteAgent = useCallback(async (agentId: string): Promise<boolean> => {
+    if (!accessToken) {
+      setActionError({ message: 'Token d\'accès manquant' });
+      return false;
+    }
+
+    setIsActionLoading(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/${agentId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      // Rafraîchir la liste
+      await loadAgents();
       
+      // Reset l'agent sélectionné si c'était celui supprimé
+      if (selectedAgent?.agentId === agentId) {
+        setSelectedAgent(null);
+        setAgentActions(null);
+      }
+
       return true;
     } catch (err) {
-      setError('Erreur lors de la validation');
+      setActionError({
+        message: err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'agent',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
       return false;
     } finally {
-      setLoading(false);
+      setIsActionLoading(false);
     }
-  }, [demandesAdhesion]);
+  }, [accessToken, loadAgents, selectedAgent]);
 
-  // Fonction pour rejeter une adhésion
-  const rejeterAdhesion = useCallback(async (request: RejetRequest): Promise<boolean> => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setDemandesAdhesion(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'rejetee' as const }
-            : demande
-        )
-      );
-      
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'adhesion',
-        action: 'rejet',
-        clientName: demandesAdhesion.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesAdhesion.find(d => d.id === request.id)?.clientId || '',
-        details: 'Adhésion rejetée',
-        raison: request.raison,
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 60) + 10,
-        status: 'completed'
-      };
-      
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
-      
-      return true;
-    } catch (err) {
-      setError('Erreur lors du rejet');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [demandesAdhesion]);
+  // Fonction pour activer/désactiver un agent
+  const toggleAgentStatus = useCallback(async (
+    agentId: string, 
+    currentStatus: boolean
+  ): Promise<boolean> => {
+    const result = await updateAgent(agentId, { est_actif: !currentStatus });
+    return !!result;
+  }, [updateAgent]);
 
-  // Fonction pour valider un retrait
-  const validerRetrait = useCallback(async (request: ValidationRequest): Promise<boolean> => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setDemandesRetrait(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'approuve' as const }
-            : demande
-        )
-      );
-      
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'retrait',
-        action: 'validation',
-        clientName: demandesRetrait.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesRetrait.find(d => d.id === request.id)?.clientId || '',
-        details: 'Retrait approuvé et traité',
-        montant: demandesRetrait.find(d => d.id === request.id)?.montantDemande,
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 90) + 30,
-        status: 'completed'
-      };
-      
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
-      
-      return true;
-    } catch (err) {
-      setError('Erreur lors de la validation du retrait');
-      return false;
-    } finally {
-      setLoading(false);
+  // Fonction de recherche
+  const searchAgents = useCallback(async (query: string) => {
+    if (!accessToken || !query.trim()) {
+      setSearchResults(null);
+      return;
     }
-  }, [demandesRetrait]);
 
-  // Fonction pour rejeter un retrait
-  const rejeterRetrait = useCallback(async (request: RejetRequest): Promise<boolean> => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setDemandesRetrait(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'rejete' as const }
-            : demande
-        )
-      );
-      
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'retrait',
-        action: 'rejet',
-        clientName: demandesRetrait.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesRetrait.find(d => d.id === request.id)?.clientId || '',
-        details: 'Retrait rejeté',
-        raison: request.raison,
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 45) + 5,
-        status: 'completed'
-      };
-      
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
-      
-      return true;
-    } catch (err) {
-      setError('Erreur lors du rejet du retrait');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [demandesRetrait]);
+    setIsLoading(true);
+    setError(null);
 
-  // Fonction pour valider un compte épargne
-  const validerCompteEpargne = useCallback(async (request: ValidationRequest): Promise<boolean> => {
-    setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1800));
-      
-      setDemandesCompteEpargne(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'valide' as const }
-            : demande
-        )
-      );
-      
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'compte_epargne',
-        action: 'validation',
-        clientName: demandesCompteEpargne.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesCompteEpargne.find(d => d.id === request.id)?.clientId || '',
-        details: 'Compte épargne validé et créé',
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 100) + 40,
-        status: 'completed'
-      };
-      
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
-      
-      return true;
-    } catch (err) {
-      setError('Erreur lors de la validation du compte épargne');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [demandesCompteEpargne]);
+      const searchParams = new URLSearchParams({
+        search: query.trim(),
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([key, value]) => 
+            key !== 'search' && key !== 'page' && value !== undefined && value !== null
+          )
+        ),
+      });
 
-  // Fonction pour rejeter un compte épargne
-  const rejeterCompteEpargne = useCallback(async (request: RejetRequest): Promise<boolean> => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      setDemandesCompteEpargne(prev => 
-        prev.map(demande => 
-          demande.id === request.id 
-            ? { ...demande, status: 'rejete' as const }
-            : demande
-        )
-      );
-      
-      const nouvelleAction: ActionHistorique = {
-        id: Date.now(),
-        type: 'compte_epargne',
-        action: 'rejet',
-        clientName: demandesCompteEpargne.find(d => d.id === request.id)?.clientName || '',
-        clientId: demandesCompteEpargne.find(d => d.id === request.id)?.clientId || '',
-        details: 'Demande compte épargne rejetée',
-        raison: request.raison,
-        dateAction: new Date().toISOString(),
-        dureeTraitement: Math.floor(Math.random() * 30) + 10,
-        status: 'completed'
-      };
-      
-      setHistoriqueActions(prev => [nouvelleAction, ...prev]);
-      
-      return true;
-    } catch (err) {
-      setError('Erreur lors du rejet du compte épargne');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [demandesCompteEpargne]);
+      const response = await fetch(`${API_BASE_URL}/admin/agents-sfd/?${searchParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-  // Fonction pour charger les statistiques
-  const loadStatistiques = useCallback(async (periode: string) => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const stats: StatistiquesPeriode = {
-        periode: `${periode} derniers jours`,
-        adhesions: { validees: 45, rejetees: 8, total: 53 },
-        retraits: { approuves: 32, rejetes: 6, total: 38, montant: 1250000 },
-        comptesEpargne: { valides: 18, rejetes: 3, total: 21 },
-        tempsTraitement: { moyen: 65, median: 45, min: 15, max: 180 },
-        tauxValidation: 87
-      };
-      
-      setStatistiques(stats);
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const data: PaginatedAgentSFDResponseList = await response.json();
+      setSearchResults(data.results);
     } catch (err) {
-      setError('Erreur lors du chargement des statistiques');
+      setError({
+        message: err instanceof Error ? err.message : 'Erreur lors de la recherche',
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, [accessToken, filters]);
 
   // Fonction pour mettre à jour les filtres
-  const updateFiltres = useCallback((nouveauxFiltres: Partial<FiltresAgent>) => {
-    setFiltres((prev: FiltresAgent) => ({ ...prev, ...nouveauxFiltres }));
+  const updateFilters = useCallback((newFilters: Partial<AgentsSFDFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
   }, []);
 
-  // Fonction pour réinitialiser les erreurs
+  // Fonction pour changer de page
+  const changePage = useCallback((page: number) => {
+    updateFilters({ page });
+  }, [updateFilters]);
+
+  // Fonction pour sélectionner un agent
+  const selectAgent = useCallback(async (agentId: string) => {
+    await loadAgent(agentId);
+    await loadAgentActions(agentId);
+  }, [loadAgent, loadAgentActions]);
+
+  // Fonction pour nettoyer la recherche
+  const clearSearch = useCallback(() => {
+    setSearchResults(null);
+    setSearchQuery('');
+  }, []);
+
+  // Fonction pour nettoyer les erreurs
   const clearError = useCallback(() => {
     setError(null);
+    setActionError(null);
   }, []);
 
-  // Chargement initial des données
+  // Chargement initial
   useEffect(() => {
-    loadDashboardStats();
-    loadDemandesAdhesion();
-    loadStatistiques('30');
-  }, [loadDashboardStats, loadDemandesAdhesion, loadStatistiques]);
+    loadAgents();
+    loadMyActions();
+  }, [filters]); // Recharge quand les filtres changent
 
-  // Calcul des données filtrées
-  const demandesAdhesionFiltrees = demandesAdhesion.filter(demande => {
-    if (filtres.searchTerm) {
-      const searchLower = filtres.searchTerm.toLowerCase();
-      if (!demande.clientName.toLowerCase().includes(searchLower) &&
-          !demande.telephone.includes(filtres.searchTerm) &&
-          !demande.tontine.name.toLowerCase().includes(searchLower)) {
-        return false;
-      }
+  // Gestion de la recherche
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const timeoutId = setTimeout(() => {
+        searchAgents(searchQuery);
+      }, 500); // Debounce de 500ms
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      clearSearch();
     }
-    
-    if (filtres.status !== 'all' && demande.status !== filtres.status) {
-      return false;
-    }
-    
-    if (filtres.priorite !== 'all' && demande.priorite !== filtres.priorite) {
-      return false;
-    }
-    
-    return true;
-  });
+  }, [searchQuery, searchAgents, clearSearch]);
 
   return {
     // Données
-    demandesAdhesion: demandesAdhesionFiltrees,
-    demandesRetrait,
-    demandesCompteEpargne,
-    historiqueActions,
-    statistiques,
-    statsDashboard,
+    agents,
+    selectedAgent,
+    agentActions,
+    myActions,
+    searchResults,
+    statistics,
     
     // États
-    loading,
+    isLoading,
+    isActionLoading,
     error,
-    filtres,
+    actionError,
+    filters,
+    searchQuery,
     
-    // Actions pour les adhésions
-    validerAdhesion,
-    rejeterAdhesion,
+    // Actions CRUD
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    toggleAgentStatus,
     
-    // Actions pour les retraits
-    validerRetrait,
-    rejeterRetrait,
+    // Actions de navigation/sélection
+    selectAgent,
+    loadAgent,
+    loadAgentActions,
     
-    // Actions pour les comptes épargne
-    validerCompteEpargne,
-    rejeterCompteEpargne,
+    // Actions de recherche et filtrage
+    searchAgents,
+    updateFilters,
+    changePage,
+    clearSearch,
     
-    // Fonctions utilitaires
-    loadDashboardStats,
-    loadDemandesAdhesion,
-    loadStatistiques,
-    updateFiltres,
+    // Actions de chargement
+    loadAgents,
+    loadMyActions,
+    
+    // Utilitaires
     clearError,
     
-    // Métadonnées
-    hasError: !!error,
-    isEmpty: demandesAdhesion.length === 0 && demandesRetrait.length === 0 && demandesCompteEpargne.length === 0
+    // Setters pour la recherche
+    setSearchQuery,
+    
+    // Données calculées
+    agentsToDisplay: searchResults || agents?.results || [],
+    hasNextPage: !!agents?.next,
+    hasPreviousPage: !!agents?.previous,
+    currentPage: filters.page || 1,
+    totalAgents: agents?.count || 0,
+    
+    // Méta-informations
+    hasError: !!(error || actionError),
+    isEmpty: !agents?.results?.length && !isLoading,
+    isSearching: !!searchQuery.trim(),
   };
 };
-
-// Hook pour les notifications de l'agent SFD
-export const useAgentNotifications = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const addNotification = useCallback((notification: any) => {
-    setNotifications(prev => [notification, ...prev]);
-    setUnreadCount(prev => prev + 1);
-  }, []);
-
-  const markAsRead = useCallback((id: number) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  }, []);
-
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    setUnreadCount(0);
-  }, []);
-
-  return {
-    notifications,
-    unreadCount,
-    addNotification,
-    markAsRead,
-    markAllAsRead
-  };
-};
-
-export default useAgentSFD;

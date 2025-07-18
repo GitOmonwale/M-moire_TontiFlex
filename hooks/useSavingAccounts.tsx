@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 import type {
@@ -7,7 +6,6 @@ import type {
   CreateSavingsAccountData,
   UpdateSavingsAccountData,
   DepositData,
-  PayFeesData,
   WithdrawData,
   ValidateRequestData,
   CreateRequestData,
@@ -20,6 +18,28 @@ import type {
   PaginatedSFDSelectionList,
   SavingsAccountFilters,
 } from '../types/saving-accounts';
+import { toast } from 'sonner';
+
+// 🆕 Interface pour les données de paiement KKiaPay (dépôts épargne)
+export interface KKiaPayDepositData {
+  transactionId: string;
+  phone?: string;
+  amount?: number;
+  status?: string;
+}
+
+// 🆕 Interface pour la confirmation de paiement (dépôts épargne)
+export interface DepositPaymentConfirmationData {
+  kkiapay_transaction_id: string;
+  internal_transaction_id: string;
+  reference: string;
+  amount: number;
+  phone: string;
+  status: 'success' | 'failed';
+  timestamp: string;
+  deposit_data: DepositData;
+  account_id: string;
+}
 
 interface useSavingsAccountsAPIResults {
   savingsAccounts: SavingsAccount[];
@@ -33,14 +53,18 @@ interface useSavingsAccountsAPIResults {
   // CRUD operations
   fetchSavingsAccounts: (filters?: SavingsAccountFilters) => Promise<PaginatedSavingsAccountList>;
   fetchSavingsAccountById: (id: string) => Promise<SavingsAccount | null>;
+  fetchSavingAccountRequests: (page?: number) => Promise<PaginatedSavingsAccountList>;
   createSavingsAccount: (accountData: CreateSavingsAccountData) => Promise<SavingsAccount>;
   updateSavingsAccount: (id: string, accountData: UpdateSavingsAccountData) => Promise<SavingsAccount>;
   updateSavingsAccountPartial: (id: string, accountData: Partial<UpdateSavingsAccountData>) => Promise<SavingsAccount>;
   deleteSavingsAccount: (id: string) => Promise<boolean>;
 
-  // Specialized operations
+  // 🆕 Opérations avec support KKiaPay
+  createDepositForPayment: (id: string, depositData: DepositData) => Promise<AccountStatusResponse>;
+  confirmDepositPayment: (confirmationData: DepositPaymentConfirmationData) => Promise<void>;
+  
+  // Specialized operations (originales)
   deposit: (id: string, depositData: DepositData) => Promise<AccountStatusResponse>;
-  payFees: (id: string, payFeesData: PayFeesData) => Promise<AccountStatusResponse>;
   withdraw: (id: string, withdrawData: WithdrawData) => Promise<AccountStatusResponse>;
   validateRequest: (id: string, validateData: ValidateRequestData) => Promise<AccountStatusResponse>;
   fetchTransactionHistory: (id: string, page?: number) => Promise<PaginatedTransactionHistoryList>;
@@ -100,7 +124,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des comptes épargne');
       throw err;
     } finally {
       setLoading(false);
@@ -125,10 +148,98 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       return accountData;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-      toast.error('Erreur lors du chargement du compte épargne');
       return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🆕 Créer un dépôt pour le paiement (sans effectuer le paiement directement)
+  const createDepositForPayment = async (id: string, depositData: DepositData): Promise<AccountStatusResponse> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('montant', depositData.montant);
+      formData.append('numero_telephone', depositData.numero_telephone);
+      if (depositData.commentaires) formData.append('commentaires', depositData.commentaires);
+
+      const response = await fetch(`${baseUrl}/savings/accounts/${id}/deposit/`, {
+        method: 'POST',
+        headers: getAuthHeaders(true), // multipart/form-data
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors de la création du dépôt';
+        if (response.status === 400) {
+          errorMessage = 'Montant invalide ou compte non actif';
+        } else if (response.status === 402) {
+          errorMessage = 'Erreur de configuration de paiement';
+        } else if (response.status === 503) {
+          errorMessage = 'Service temporairement indisponible';
+        }
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ Dépôt créé pour paiement:', result);
+      
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 Confirmer le paiement de dépôt après succès KKiaPay
+  const confirmDepositPayment = async (confirmationData: DepositPaymentConfirmationData): Promise<void> => {
+    try {
+      const webhookData = {
+        transactionId: confirmationData.kkiapay_transaction_id,
+        isPaymentSucces: confirmationData.status === 'success',
+        event: confirmationData.status === 'success' ? 'payment.success' : 'payment.failed',
+        timestamp: confirmationData.timestamp,
+        amount: confirmationData.amount,
+        status: confirmationData.status.toUpperCase(),
+        data: {
+          transaction_id: confirmationData.internal_transaction_id,
+          reference: confirmationData.reference,
+          type: 'depot_epargne',
+          account_id: confirmationData.account_id,
+          form_data: confirmationData.deposit_data
+        }
+      };
+
+      const response = await fetch(`${baseUrl}/payments/webhook/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur confirmation dépôt: ${response.status}`);
+      }
+
+      console.log('✅ Dépôt confirmé avec succès');
+    } catch (err) {
+      console.error('❌ Erreur confirmation dépôt:', err);
+      throw err;
     }
   };
 
@@ -169,15 +280,19 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
           if (errorData.detail) {
             errorMessage = errorData.detail;
           } else if (response.status === 400) {
-            errorMessage = 'Données invalides ou client non éligible';
+            errorMessage = 'Vous avez déjà une demande de création de compte courant en cours pour cette SFD';
+            console.error(errorMessage);
+            toast.error(errorMessage);
           } else if (response.status === 409) {
-            errorMessage = 'Client possède déjà un compte épargne actif';
+            errorMessage = 'Vous possèdez déjà un compte courant actif pour cette SFD';
+            toast.error(errorMessage);
           } else if (typeof errorData === 'object') {
             const validationErrors = Object.entries(errorData)
               .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
               .join('\n');
             if (validationErrors) {
-              errorMessage = `Erreurs de validation :\n${validationErrors}`;
+              errorMessage = `Erreurs de validation :\n${validationErrors}`
+              toast.error(errorMessage);
             }
           }
         } catch (e) {
@@ -188,12 +303,10 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
 
       const newAccount = await response.json();
       setSavingsAccounts(prev => [newAccount, ...prev]);
-      toast.success('Demande de compte épargne créée avec succès');
       return newAccount;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -238,12 +351,10 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
         prev.map(account => account.id === id ? { ...account, ...updatedAccount } : account)
       );
       setSavingsAccount(updatedAccount);
-      toast.success('Compte épargne mis à jour avec succès');
       return updatedAccount;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -288,12 +399,10 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
         prev.map(account => account.id === id ? { ...account, ...updatedAccount } : account)
       );
       setSavingsAccount(updatedAccount);
-      toast.success('Compte épargne mis à jour avec succès');
       return updatedAccount;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -318,19 +427,17 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       if (savingsAccount?.id === id) {
         setSavingsAccount(null);
       }
-      toast.success('Compte épargne fermé avec succès');
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Effectuer un dépôt via Mobile Money
+  // Effectuer un dépôt via Mobile Money (méthode originale)
   const deposit = async (id: string, depositData: DepositData): Promise<AccountStatusResponse> => {
     setLoading(true);
     setError(null);
@@ -359,7 +466,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
 
       const result = await response.json();
-      toast.success('Dépôt effectué avec succès');
       
       // Rafraîchir le compte si c'est le compte affiché
       if (savingsAccount?.id === id) {
@@ -370,53 +476,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Payer les frais de création via Mobile Money
-  const payFees = async (id: string, payFeesData: PayFeesData): Promise<AccountStatusResponse> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('numero_telephone', payFeesData.numero_telephone);
-      formData.append('confirmer_montant', payFeesData.confirmer_montant);
-
-      const response = await fetch(`${baseUrl}/savings/accounts/${id}/pay-fees/`, {
-        method: 'POST',
-        headers: getAuthHeaders(true), // multipart/form-data
-        body: formData,
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Erreur lors du paiement des frais';
-        if (response.status === 400) {
-          errorMessage = 'Erreur de paiement ou demande non validée';
-        } else if (response.status === 402) {
-          errorMessage = 'Solde Mobile Money insuffisant';
-        } else if (response.status === 503) {
-          errorMessage = 'Service Mobile Money temporairement indisponible';
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-      toast.success('Frais de création payés avec succès');
-      
-      // Rafraîchir le compte
-      if (savingsAccount?.id === id) {
-        await fetchSavingsAccountById(id);
-      }
-      
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
-      setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -452,7 +511,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
 
       const result = await response.json();
-      toast.success('Retrait effectué avec succès');
       
       // Rafraîchir le compte
       if (savingsAccount?.id === id) {
@@ -463,7 +521,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -499,7 +556,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
 
       const result = await response.json();
-      toast.success(validateData.approuver ? 'Demande validée avec succès' : 'Demande rejetée');
       
       // Rafraîchir le compte
       if (savingsAccount?.id === id) {
@@ -510,7 +566,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -539,7 +594,6 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement de l\'historique des transactions');
       throw err;
     } finally {
       setLoading(false);
@@ -563,12 +617,12 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
       
       const data: PaginatedSFDSelectionList = await response.json();
+      console.log("data sfddddddd", data.sfds);
       setAvailableSFDs(data.sfds || []);
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement des SFDs disponibles');
       throw err;
     } finally {
       setLoading(false);
@@ -599,9 +653,9 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
           if (errorData.detail) {
             errorMessage = errorData.detail;
           } else if (response.status === 400) {
-            errorMessage = 'Données invalides ou client non éligible';
+            errorMessage = 'Vous avez déjà une demande de création de compte courant en cours';
           } else if (response.status === 409) {
-            errorMessage = 'Client possède déjà un compte épargne';
+            errorMessage = 'Vous possèdez déjà un compte courant actif';
           }
         } catch (e) {
           console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
@@ -610,12 +664,10 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
       }
 
       const result = await response.json();
-      toast.success('Demande de compte épargne créée avec succès');
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -643,8 +695,41 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
       setError(errorMessage);
-      toast.error('Erreur lors du chargement de votre compte épargne');
       return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Récupérer les demandes de comptes épargne pour l'agent SFD
+  const fetchSavingAccountRequests = async (page: number = 1): Promise<PaginatedSavingsAccountList> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const searchParams = new URLSearchParams();
+      searchParams.append('page', page.toString());
+
+      const url = `${baseUrl}/savings/accounts/agent-requests/?${searchParams.toString()}`;
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
+          
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors du chargement des demandes de comptes épargne';
+        if (response.status === 403) {
+          errorMessage = 'Non autorisé à accéder à ces demandes';
+        } else if (response.status === 404) {
+          errorMessage = 'Aucune demande trouvée pour votre SFD';
+        }
+        throw new Error(errorMessage);
+      }
+          
+      const data: PaginatedSavingsAccountList = await response.json();
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+        throw err;
     } finally {
       setLoading(false);
     }
@@ -660,12 +745,16 @@ export function useSavingsAccounts(): useSavingsAccountsAPIResults {
     error,
     fetchSavingsAccounts,
     fetchSavingsAccountById,
+    fetchSavingAccountRequests,
     createSavingsAccount,
     updateSavingsAccount,
     updateSavingsAccountPartial,
     deleteSavingsAccount,
+    // 🆕 Nouvelles méthodes KKiaPay
+    createDepositForPayment,
+    confirmDepositPayment,
+    // Méthodes originales
     deposit,
-    payFees,
     withdraw,
     validateRequest,
     fetchTransactionHistory,

@@ -27,7 +27,9 @@ import {
   Building,
   X,
   Check,
-  Loader2
+  Loader2,
+  Image as ImageIcon,
+  ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -36,13 +38,14 @@ import { useAdhesions } from '@/hooks/useAdhesions';
 import { Adhesion, StatutAdhesion } from '@/types/adhesions';
 
 const AgentSFDAdhesionsPage = () => {
-  // Hook pour les adhésions
+  // Hook pour les adhésions - utilisation du vrai hook backend
   const {
     adhesions,
     loading,
     error,
     fetchAdhesions,
-    validerAgent
+    validerAgent,
+    rejectAdhesion
   } = useAdhesions();
 
   // États locaux
@@ -55,15 +58,20 @@ const AgentSFDAdhesionsPage = () => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // États pour le modal de commentaire
-  const [showCommentModal, setShowCommentModal] = useState(false);
-  const [commentAction, setCommentAction] = useState<'validate' | 'reject' | null>(null);
-  const [commentAdhesion, setCommentAdhesion] = useState<Adhesion | null>(null);
-  const [commentText, setCommentText] = useState("");
+  // États pour le modal de validation
+  const [showValidateModal, setShowValidateModal] = useState(false);
+  const [validateAdhesion, setValidateAdhesion] = useState<Adhesion | null>(null);
+  const [validateComment, setValidateComment] = useState("");
+
+  // États pour le modal de rejet avec confirmation
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectAdhesion_state, setRejectAdhesion] = useState<Adhesion | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // Charger les adhésions au montage du composant
   useEffect(() => {
     loadAdhesions();
+    console.log("adhesions",adhesions);
   }, [currentPage, filterStatus]);
 
   const loadAdhesions = async () => {
@@ -82,56 +90,85 @@ const AgentSFDAdhesionsPage = () => {
     }
   };
 
-  // Filtrage local des adhésions (pour la recherche)
-  const filteredAdhesions = adhesions.filter(adhesion => {
+  // ✅ FILTRAGE SÉCURISÉ
+  const filteredAdhesions = (adhesions || []).filter(adhesion => {
+    if (!adhesion) return false;
+    
+    const searchTermLower = (searchTerm || '').toLowerCase();
+    
+    // Vérification sécurisée avec valeurs par défaut
+    const clientNom = (adhesion.client_nom || '').toLowerCase();
+    const tontineNom = (adhesion.tontine_nom || '').toLowerCase();
+    const numeroTelephone = adhesion.numero_telephone_paiement || '';
+    
     const searchMatch = 
-      adhesion.client_nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      adhesion.tontine_nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (adhesion.numero_telephone_paiement && adhesion.numero_telephone_paiement.includes(searchTerm));
+      clientNom.includes(searchTermLower) ||
+      tontineNom.includes(searchTermLower) ||
+      numeroTelephone.includes(searchTerm || '');
     
     return searchMatch;
   });
 
+  
   const handleValidateAdhesion = (adhesion: Adhesion) => {
-    setCommentAdhesion(adhesion);
-    setCommentAction('validate');
-    setCommentText('');
-    setShowCommentModal(true);
+    setValidateAdhesion(adhesion);
+    setValidateComment('');
+    setShowValidateModal(true);
   };
 
-  const handleRejectAdhesion = (adhesion: Adhesion) => {
-    setCommentAdhesion(adhesion);
-    setCommentAction('reject');
-    setCommentText('');
-    setShowCommentModal(true);
-  };
-
-  const executeActionWithComment = async () => {
-    if (!commentAdhesion || !commentAction) return;
-    
-    setLoadingAction(commentAdhesion.id);
+  const executeValidation = async () => {
+    if (!validateAdhesion) return;
+    setLoadingAction(validateAdhesion.id);
     try {
-      if (commentAction === 'validate') {
-        await validerAgent(commentAdhesion.id, {
-          commentaires: commentText || "Demande validée par l'agent SFD"
-        });
-        toast.success(`Adhésion de ${commentAdhesion.client_nom} validée avec succès.`);
-      } else if (commentAction === 'reject') {
-        // Note: Pour le rejet, vous devrez peut-être implémenter une fonction spécifique
-        // dans votre hook si l'API a un endpoint pour rejeter
-        await validerAgent(commentAdhesion.id, {
-          commentaires: commentText || "Demande rejetée par l'agent SFD"
-        });
-        toast.error(`Adhésion de ${commentAdhesion.client_nom} rejetée.`);
-      }
+      await validerAgent(validateAdhesion.id, {
+        commentaires: validateComment || "Demande validée par l'agent SFD"
+      });
+      toast.success(`Adhésion de ${validateAdhesion.client_nom || 'ce client'} validée avec succès.`);
       
-      // Fermer le modal
-      setShowCommentModal(false);
-      setCommentAdhesion(null);
-      setCommentAction(null);
-      setCommentText('');
+      // Fermer le modal et rafraîchir
+      setShowValidateModal(false);
+      setValidateAdhesion(null);
+      setValidateComment('');
+      await loadAdhesions();
     } catch (err) {
-      console.error('Erreur lors de l\'action:', err);
+      console.error('Erreur lors de la validation:', err);
+      toast.error('Erreur lors de la validation de la demande.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // ✅ REJET AVEC CONFIRMATION ET BACKEND
+  const handleRejectAdhesion = (adhesion: Adhesion) => {
+    setRejectAdhesion(adhesion);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const executeRejection = async () => {
+    if (!rejectAdhesion_state) return;
+    
+    if (!rejectReason.trim()) {
+      toast.error('Veuillez préciser la raison du rejet');
+      return;
+    }
+
+    setLoadingAction(rejectAdhesion_state.id);
+    try {
+      await rejectAdhesion(rejectAdhesion_state.id, {
+        raison_rejet: rejectReason || "Demande rejetée par l'agent SFD"
+      });
+      
+      toast.success(`Adhésion de ${rejectAdhesion_state.client_nom || 'ce client'} rejetée.`);
+      
+      // Fermer le modal et rafraîchir
+      setShowRejectModal(false);
+      setRejectAdhesion(null);
+      setRejectReason('');
+      await loadAdhesions();
+    } catch (err) {
+      console.error('Erreur lors du rejet:', err);
+      toast.error('Erreur lors du rejet de la demande.');
     } finally {
       setLoadingAction(null);
     }
@@ -145,6 +182,15 @@ const AgentSFDAdhesionsPage = () => {
   const handleViewImage = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setShowImageModal(true);
+  };
+
+  // ✅ FONCTION POUR DÉTERMINER LE TYPE DE FICHIER
+  const getFileType = (url: string): 'pdf' | 'image' | 'unknown' => {
+    if (!url) return 'unknown';
+    const extension = url.split('.').pop()?.toLowerCase();
+    if (['pdf'].includes(extension || '')) return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image';
+    return 'unknown';
   };
 
   const getStatusBadge = (status: StatutAdhesion) => {
@@ -185,14 +231,19 @@ const AgentSFDAdhesionsPage = () => {
     }
   };
 
-  // Calculer les statistiques
-  const statsEnAttente = adhesions.filter(a => a.statut_actuel === 'demande_soumise').length;
-  const statsValidees = adhesions.filter(a => a.statut_actuel === 'validee_agent' || a.statut_actuel === 'adherent').length;
-  const statsCeMois = adhesions.filter(a => {
-    const dateCreation = new Date(a.date_creation);
-    const maintenant = new Date();
-    return dateCreation.getMonth() === maintenant.getMonth() && 
-           dateCreation.getFullYear() === maintenant.getFullYear();
+  // ✅ CALCUL SÉCURISÉ DES STATISTIQUES
+  const statsEnAttente = (adhesions || []).filter(a => a?.statut_actuel === 'demande_soumise').length;
+  const statsValidees = (adhesions || []).filter(a => a?.statut_actuel === 'validee_agent' || a?.statut_actuel === 'adherent').length;
+  const statsCeMois = (adhesions || []).filter(a => {
+    if (!a?.date_creation) return false;
+    try {
+      const dateCreation = new Date(a.date_creation);
+      const maintenant = new Date();
+      return dateCreation.getMonth() === maintenant.getMonth() && 
+             dateCreation.getFullYear() === maintenant.getFullYear();
+    } catch {
+      return false;
+    }
   }).length;
 
   if (error) {
@@ -205,96 +256,7 @@ const AgentSFDAdhesionsPage = () => {
           <GlassButton onClick={loadAdhesions}>
             Réessayer
           </GlassButton>
-          {/* Modal commentaire pour validation/rejet */}
-        {showCommentModal && commentAdhesion && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full">
-              <div className="flex justify-between items-center p-6 border-b">
-                <h3 className="text-xl font-semibold">
-                  {commentAction === 'validate' ? 'Valider la demande' : 'Rejeter la demande'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowCommentModal(false);
-                    setCommentAdhesion(null);
-                    setCommentAction(null);
-                    setCommentText('');
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="p-6">
-                <div className="mb-4">
-                  <p className="text-gray-600 mb-2">
-                    Client: <span className="font-semibold">{commentAdhesion.client_nom}</span>
-                  </p>
-                  <p className="text-gray-600">
-                    Tontine: <span className="font-semibold">{commentAdhesion.tontine_nom}</span>
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Commentaire {commentAction === 'reject' ? '(obligatoire pour le rejet)' : '(optionnel)'}
-                  </label>
-                  <Textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder={
-                      commentAction === 'validate' 
-                        ? "Ajoutez un commentaire pour la validation..." 
-                        : "Précisez la raison du rejet..."
-                    }
-                    rows={4}
-                    className="w-full"
-                    maxLength={500}
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    {commentText.length}/500 caractères
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end">
-                  <GlassButton 
-                    variant="outline"
-                    onClick={() => {
-                      setShowCommentModal(false);
-                      setCommentAdhesion(null);
-                      setCommentAction(null);
-                      setCommentText('');
-                    }}
-                    disabled={loadingAction === commentAdhesion.id}
-                  >
-                    Annuler
-                  </GlassButton>
-                  
-                  <GlassButton 
-                    className={commentAction === 'validate' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
-                    onClick={executeActionWithComment}
-                    disabled={
-                      loadingAction === commentAdhesion.id || 
-                      (commentAction === 'reject' && !commentText.trim())
-                    }
-                  >
-                    {loadingAction === commentAdhesion.id ? (
-                      <Loader2 size={16} className="mr-2 animate-spin" />
-                    ) : commentAction === 'validate' ? (
-                      <Check size={16} className="mr-2" />
-                    ) : (
-                      <X size={16} className="mr-2" />
-                    )}
-                    {commentAction === 'validate' ? 'Valider' : 'Rejeter'}
-                  </GlassButton>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
+        </div>
       </div>
     );
   }
@@ -396,7 +358,7 @@ const AgentSFDAdhesionsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {loading && adhesions.length === 0 ? (
+              {loading && (!adhesions || adhesions.length === 0) ? (
                 <tr>
                   <td colSpan={7} className="text-center text-gray-400 py-6">
                     <Loader2 className="mx-auto mb-2 animate-spin text-gray-300" size={36} />
@@ -420,23 +382,27 @@ const AgentSFDAdhesionsPage = () => {
                   >
                     {/* Client */}
                     <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
-                      {adhesion.client_nom}
+                      {adhesion.client_nom || 'Nom non renseigné'}
                     </td>
                     {/* Téléphone */}
                     <td className="px-2 py-2 text-gray-700 align-middle">
-                      {adhesion.numero_telephone_paiement || 'Non renseigné'}
+                      {adhesion.client_telephone || 'Non renseigné'}
                     </td>
                     {/* Tontine */}
                     <td className="px-2 py-2 text-gray-700 align-middle">
-                      {adhesion.tontine_nom}
+                      {adhesion.tontine_nom || 'Tontine non renseignée'}
                     </td>
                     {/* Mise */}
                     <td className="px-2 py-2 text-gray-700 align-middle">
-                      {parseFloat(adhesion.montant_mise).toLocaleString()} FCFA
+                      {adhesion.montant_mise ? `${parseFloat(adhesion.montant_mise).toLocaleString()} FCFA` : 'Non renseigné'}
                     </td>
                     {/* Date */}
                     <td className="px-2 py-2 text-gray-700 align-middle">
-                      {format(new Date(adhesion.date_creation), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      {adhesion.date_creation ? (
+                        format(new Date(adhesion.date_creation), 'dd/MM/yyyy HH:mm', { locale: fr })
+                      ) : (
+                        'Date non renseignée'
+                      )}
                     </td>
                     {/* Statut */}
                     <td className="px-2 py-2 text-center align-middle">
@@ -492,12 +458,175 @@ const AgentSFDAdhesionsPage = () => {
           </table>
         </div>
 
-        {/* Modal détails */}
-        {showModal && selectedAdhesion && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto">
+        {/* ✅ MODAL DE VALIDATION */}
+        {showValidateModal && validateAdhesion && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
               <div className="flex justify-between items-center p-6 border-b">
-                <h3 className="text-xl font-semibold">Détails de la demande</h3>
+                <h3 className="text-xl font-semibold text-green-700">
+                  Valider la demande
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowValidateModal(false);
+                    setValidateAdhesion(null);
+                    setValidateComment('');
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-2">
+                    Client: <span className="font-semibold">{validateAdhesion.client_nom || 'Nom non renseigné'}</span>
+                  </p>
+                  <p className="text-gray-600">
+                    Tontine: <span className="font-semibold">{validateAdhesion.tontine_nom || 'Tontine non renseignée'}</span>
+                  </p>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Commentaire (optionnel)
+                  </label>
+                  <Textarea
+                    value={validateComment}
+                    onChange={(e) => setValidateComment(e.target.value)}
+                    placeholder="Ajoutez un commentaire pour la validation..."
+                    rows={4}
+                    className="w-full"
+                    maxLength={500}
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {validateComment.length}/500 caractères
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <GlassButton 
+                    variant="outline"
+                    onClick={() => {
+                      setShowValidateModal(false);
+                      setValidateAdhesion(null);
+                      setValidateComment('');
+                    }}
+                    disabled={loadingAction === validateAdhesion.id}
+                  >
+                    Annuler
+                  </GlassButton>
+                  
+                  <GlassButton 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={executeValidation}
+                    disabled={loadingAction === validateAdhesion.id}
+                  >
+                    {loadingAction === validateAdhesion.id ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Check size={16} className="mr-2" />
+                    )}
+                    Valider la demande
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ MODAL DE REJET AVEC CONFIRMATION */}
+        {showRejectModal && rejectAdhesion_state && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold text-red-700">
+                  ⚠️ Rejeter la demande
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectAdhesion(null);
+                    setRejectReason('');
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-2">
+                    Client: <span className="font-semibold">{rejectAdhesion_state.client_nom || 'Nom non renseigné'}</span>
+                  </p>
+                  <p className="text-gray-600 mb-4">
+                    Tontine: <span className="font-semibold">{rejectAdhesion_state.tontine_nom || 'Tontine non renseignée'}</span>
+                  </p>
+                  
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-red-700 text-sm">
+                      <strong>Attention:</strong> Cette action est irréversible. Le client sera notifié du rejet et devra soumettre une nouvelle demande.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Raison du rejet <span className="text-red-500">*</span>
+                  </label>
+                  <Textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Précisez la raison du rejet (obligatoire)..."
+                    rows={4}
+                    className="w-full"
+                    maxLength={500}
+                    required
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {rejectReason.length}/500 caractères
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <GlassButton 
+                    variant="outline"
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectAdhesion(null);
+                      setRejectReason('');
+                    }}
+                    disabled={loadingAction === rejectAdhesion_state.id}
+                  >
+                    Annuler
+                  </GlassButton>
+                  
+                  <GlassButton 
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={executeRejection}
+                    disabled={loadingAction === rejectAdhesion_state.id || !rejectReason.trim()}
+                  >
+                    {loadingAction === rejectAdhesion_state.id ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <X size={16} className="mr-2" />
+                    )}
+                    Confirmer le rejet
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ MODAL DÉTAILS AMÉLIORÉ AVEC APERÇU DE LA PIÈCE D'IDENTITÉ */}
+        {showModal && selectedAdhesion && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold">Détails de la demande d'adhésion</h3>
                 <button
                   onClick={() => setShowModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-full"
@@ -507,77 +636,190 @@ const AgentSFDAdhesionsPage = () => {
               </div>
               
               <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Informations générales */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                    <p className="text-gray-900">{selectedAdhesion.client_nom}</p>
+                    <h4 className="text-lg font-semibold mb-4">Informations générales</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                        <p className="text-gray-900">{selectedAdhesion.client_nom || 'Nom non renseigné'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ID Adhésion</label>
+                        <p className="text-gray-900 font-mono text-sm">{selectedAdhesion.id}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                        <p className="text-gray-900">{selectedAdhesion.numero_telephone_paiement || 'Non renseigné'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tontine</label>
+                        <p className="text-gray-900">{selectedAdhesion.tontine_nom || 'Tontine non renseignée'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Montant mise</label>
+                        <p className="text-gray-900 font-semibold">
+                          {selectedAdhesion.montant_mise ? 
+                            `${parseFloat(selectedAdhesion.montant_mise).toLocaleString()} FCFA` : 
+                            'Non renseigné'
+                          }
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Frais adhésion</label>
+                        <p className="text-gray-900">
+                          {selectedAdhesion.frais_adhesion_calcules ? 
+                            `${parseFloat(selectedAdhesion.frais_adhesion_calcules).toLocaleString()} FCFA` : 
+                            'Non calculés'
+                          }
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                        <span className={cn("px-3 py-1 rounded-full text-sm font-medium border", getStatusBadge(selectedAdhesion.statut_actuel))}>
+                          {getStatusLabel(selectedAdhesion.statut_actuel)}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Prochaine action</label>
+                        <p className="text-blue-600 font-medium">{
+                        selectedAdhesion.etape_actuelle === 'etape_1' ? 'Validation agent' :
+                        selectedAdhesion.etape_actuelle === 'etape_2' ? 'Paiement frais' :
+                        selectedAdhesion.etape_actuelle === 'etape_3' ? 'Intégration tontine' :
+                        'Terminée'
+                          }</p>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* ✅ APERÇU DE LA PIÈCE D'IDENTITÉ AMÉLIORÉ */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ID Adhésion</label>
-                    <p className="text-gray-900">{selectedAdhesion.id}</p>
+                    <h4 className="text-lg font-semibold mb-4">Pièce d'identité</h4>
+                    {selectedAdhesion.document_identite ? (
+                      <div className="border rounded-lg p-4 bg-gray-50">
+                        {getFileType(selectedAdhesion.document_identite) === 'image' ? (
+                          <div className="space-y-3">
+                            <div className="aspect-video bg-white rounded border overflow-hidden">
+                              <img
+                                src={selectedAdhesion.document_identite}
+                                alt="Pièce d'identité"
+                                className="w-full h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => handleViewImage(selectedAdhesion.document_identite!)}
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder-document.png';
+                                }}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewImage(selectedAdhesion.document_identite!)}
+                                className="flex items-center gap-2"
+                              >
+                                <Eye size={16} />
+                                Agrandir
+                              </GlassButton>
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(selectedAdhesion.document_identite!, '_blank')}
+                                className="flex items-center gap-2"
+                              >
+                                <ExternalLink size={16} />
+                                Ouvrir
+                              </GlassButton>
+                            </div>
+                          </div>
+                        ) : getFileType(selectedAdhesion.document_identite) === 'pdf' ? (
+                          <div className="text-center py-8 space-y-4">
+                            <FileText className="mx-auto text-red-500" size={48} />
+                            <div>
+                              <p className="font-medium">Document PDF</p>
+                              <p className="text-sm text-gray-600">Cliquez pour ouvrir le fichier</p>
+                            </div>
+                            <div className="flex gap-2 justify-center">
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(selectedAdhesion.document_identite!, '_blank')}
+                                className="flex items-center gap-2"
+                              >
+                                <ExternalLink size={16} />
+                                Ouvrir le PDF
+                              </GlassButton>
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = selectedAdhesion.document_identite!;
+                                  link.download = `piece_identite_${selectedAdhesion.client_nom || 'client'}.pdf`;
+                                  link.click();
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <Download size={16} />
+                                Télécharger
+                              </GlassButton>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 space-y-4">
+                            <FileText className="mx-auto text-gray-400" size={48} />
+                            <div>
+                              <p className="font-medium">Format non reconnu</p>
+                              <p className="text-sm text-gray-600">Cliquez pour ouvrir le fichier</p>
+                            </div>
+                            <GlassButton
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(selectedAdhesion.document_identite!, '_blank')}
+                              className="flex items-center gap-2"
+                            >
+                              <ExternalLink size={16} />
+                              Ouvrir le fichier
+                            </GlassButton>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                        <ImageIcon className="mx-auto text-gray-400 mb-2" size={48} />
+                        <p className="text-gray-500">Aucun document fourni</p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                    <p className="text-gray-900">{selectedAdhesion.numero_telephone_paiement || 'Non renseigné'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tontine</label>
-                    <p className="text-gray-900">{selectedAdhesion.tontine_nom}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Montant mise</label>
-                    <p className="text-gray-900">{parseFloat(selectedAdhesion.montant_mise).toLocaleString()} FCFA</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Frais adhésion</label>
-                    <p className="text-gray-900">
-                      {selectedAdhesion.frais_adhesion_calcules ? 
-                        `${parseFloat(selectedAdhesion.frais_adhesion_calcules).toLocaleString()} FCFA` : 
-                        'Non calculés'
-                      }
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-                    <span className={cn("px-3 py-1 rounded-full text-sm font-medium border", getStatusBadge(selectedAdhesion.statut_actuel))}>
-                      {getStatusLabel(selectedAdhesion.statut_actuel)}
-                    </span>
-                  </div>
+                </div>
+
+                {/* Commentaires et historique */}
+                <div className="mt-6 space-y-4">
                   {selectedAdhesion.commentaires_agent && (
-                    <div className="col-span-2">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Commentaires agent</label>
-                      <p className="text-gray-900">{selectedAdhesion.commentaires_agent}</p>
+                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p className="text-blue-800">{selectedAdhesion.commentaires_agent}</p>
+                        {selectedAdhesion.agent_nom && (
+                          <p className="text-xs text-blue-600 mt-1">Par: {selectedAdhesion.agent_nom}</p>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {selectedAdhesion.prochaine_action && (
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Prochaine action</label>
-                      <p className="text-gray-900">{selectedAdhesion.prochaine_action}</p>
+                  
+                  {selectedAdhesion.raison_rejet && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Raison du rejet</label>
+                      <div className="bg-red-50 border border-red-200 rounded p-3">
+                        <p className="text-red-800">{selectedAdhesion.raison_rejet}</p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Document d'identité */}
-                {selectedAdhesion.document_identite && (
-                  <div className="mb-8">
-                    <h4 className="text-md font-semibold mb-2">Document d'identité</h4>
-                    <div className="flex gap-6">
-                      <div className="flex flex-col items-center">
-                        <a 
-                          href={selectedAdhesion.document_identite}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 underline"
-                        >
-                          Voir le document
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
+                {/* Actions si demande en attente */}
                 {selectedAdhesion.statut_actuel === 'demande_soumise' && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 mt-6 pt-6 border-t">
                     <GlassButton 
                       className="bg-green-600 hover:bg-green-700"
                       onClick={() => {
@@ -603,7 +845,7 @@ const AgentSFDAdhesionsPage = () => {
                       disabled={loadingAction === selectedAdhesion.id}
                     >
                       <X size={16} className="mr-2" />
-                      Rejeter
+                      Rejeter la demande
                     </GlassButton>
                   </div>
                 )}
@@ -612,24 +854,35 @@ const AgentSFDAdhesionsPage = () => {
           </div>
         )}
 
-        {/* Modal image */}
+        {/* ✅ MODAL IMAGE PLEIN ÉCRAN */}
         {showImageModal && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/80 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-lg max-w-6xl max-h-[95vh] overflow-auto">
               <div className="flex justify-between items-center p-4 border-b">
-                <h3 className="text-lg font-semibold">Document d'identité</h3>
-                <button
-                  onClick={() => setShowImageModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X size={20} />
-                </button>
+                <h3 className="text-lg font-semibold">Pièce d'identité - Vue agrandie</h3>
+                <div className="flex gap-2">
+                  <GlassButton
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(selectedImage, '_blank')}
+                  >
+                    <ExternalLink size={16} className="mr-1" />
+                    Ouvrir
+                  </GlassButton>
+                  <button
+                    onClick={() => setShowImageModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
               <div className="p-4">
                 <img
                   src={selectedImage}
-                  alt="Document d'identité"
+                  alt="Pièce d'identité"
                   className="max-w-full h-auto mx-auto"
+                  style={{ maxHeight: '80vh' }}
                   onError={(e) => {
                     e.currentTarget.src = '/placeholder-document.png';
                   }}

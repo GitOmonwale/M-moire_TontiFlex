@@ -73,7 +73,6 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
 
       } catch (error) {
         console.error('❌ Erreur simulation webhook:', error);
-        toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
         // Ne pas fermer le modal en cas d'erreur
       } finally {
         setStep('form');
@@ -353,22 +352,6 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
                   rows={2}
                 />
               </div>
-              <GlassButton
-                onClick={() => {
-                  openPayment({
-                    key: 'd1297c10527a11f0a266e50dce82524c',
-                    sandbox: true,
-                    amount: 1000,
-                    phone: '+22997000000',
-                    description: 'Test direct',
-                    callback: 'https://tontiflexapp.onrender.com/api/payments/webhook/',
-                    position: 'center',
-                    theme: '#2196f3'
-                  });
-                }}
-              >
-                Test Widget Direct
-              </GlassButton>
             </div>
           )}
 

@@ -1,54 +1,90 @@
-// Types TypeScript basés sur l'API
-export interface SFDInfo {
-  id: string;
-  nom: string;
+// Types principaux
+export interface AgentSFDResponse {
+  agentId: string;
+  agentName: string;
+  telephone: string;
+  email: string;
+  sfd: string;
+  status: string;
+  dateInscription: string;
 }
 
 export interface AgentSFDAdmin {
-  nom: string; // maxLength: 100
-  prenom: string; // maxLength: 100
-  telephone: string; // pattern: ^\+?1?\d{9,15}$, maxLength: 15
-  email: string; // email, maxLength: 254
-  adresse: string; // Adresse physique complète
-  profession: string; // maxLength: 100
-  est_actif: boolean; // Indique si l'agent est actuellement actif
-  sfd: SFDInfo; // Informations de la SFD rattachée
-}
-
-export interface CreateAgentSFDData {
   nom: string;
   prenom: string;
-  email: string;
   telephone: string;
-  motDePasse: string; // Requis uniquement pour la création
+  email: string;
   adresse: string;
   profession: string;
-  sfd_id: string; // ID de la SFD de rattachement
-  est_actif?: boolean;
+  est_actif: boolean;
 }
 
-export interface UpdateAgentSFDData {
-  nom?: string;
-  prenom?: string;
-  email?: string;
-  telephone?: string;
-  motDePasse?: string;
-  adresse?: string;
-  profession?: string;
-  sfd_id?: string;
-  est_actif?: boolean;
+export interface AgentSFDCreate extends AgentSFDAdmin {
+  motDePasse: string;
+  sfd_id: string;
 }
 
-export interface PaginatedAgentSFDAdminList {
+export interface PaginatedAgentSFDResponseList {
   count: number;
   next: string | null;
   previous: string | null;
-  results: AgentSFDAdmin[];
+  results: AgentSFDResponse[];
 }
 
-export interface AgentSFDFilters {
+export interface AgentAction {
+  id: string;
+  action_type: string;
+  description: string;
+  target_object: string;
+  target_id: string;
+  date_action: string;
+  details?: any;
+  ip_address?: string;
+  user_agent?: string;
+  duree_traitement?: number;
+  status?: string;
+  montant?: number;
+  raison?: string;
+}
+
+export interface AgentActionsResponse {
+  agent_id: string;
+  agent_name: string;
+  total_actions: number;
+  actions: AgentAction[];
+  period_start?: string;
+  period_end?: string;
+}
+
+export interface AgentsSFDFilters {
   page?: number;
-  search?: string;
   sfd_id?: string;
+  status?: string;
   est_actif?: boolean;
+  search?: string;
+  ordering?: string;
+}
+
+export interface StatistiquesDashboard {
+  total_agents: number;
+  agents_actifs: number;
+  agents_inactifs: number;
+  agents_by_sfd: Record<string, number>;
+  actions_today: number;
+  actions_week: number;
+  actions_month: number;
+  avg_response_time: number;
+  validation_rate: number;
+}
+
+export interface ValidationRequest {
+  id: string;
+  commentaires?: string;
+  decision: 'valide' | 'rejete';
+}
+
+export interface RejetRequest {
+  id: string;
+  raison: string;
+  commentaires?: string;
 }

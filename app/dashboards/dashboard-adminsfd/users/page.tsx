@@ -1,6 +1,5 @@
-// app/dashboard-sfd-admin/users/page.tsx
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,190 +8,343 @@ import {
   Users, 
   User, 
   Search, 
-  Filter, 
   Download, 
   Plus,
-  Edit,
-  Trash2,
   Eye,
   UserCheck,
   UserX,
   Shield,
-  Building,
   Phone,
   Mail,
   MapPin,
   Calendar,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
   MoreVertical,
   Key,
   Ban,
   Unlock,
-  RefreshCw
+  Building,
+  UserCog,
+  Crown,
+  Briefcase
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
+// Import des hooks
+import { useClientsAPI } from '@/hooks/useClients';
+import { useAdminsPlateforme } from '@/hooks/gestion-users/useAdminsPlateforme';
+
+// Types
+interface UserTab {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  count: number;
+  color: string;
+}
+
+// Fonction utilitaire pour formater les dates
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return 'N/A';
+  }
+};
+
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return 'N/A';
+  }
+};
 
 const UsersManagement = () => {
+  const [activeTab, setActiveTab] = useState('clients');
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [showCreateUser, setShowCreateUser] = useState(false);
 
-  // Données mockées des utilisateurs
-  const users = [
+  // Hooks pour récupérer les données
+  const { 
+    clients, 
+    loading: clientsLoading, 
+    error: clientsError, 
+    fetchClients 
+  } = useClientsAPI();
+
+  const { 
+    adminsplateforme, 
+    loading: adminsLoading, 
+    error: adminsError, 
+    fetchAdminsPlateforme 
+  } = useAdminsPlateforme();
+
+  // États pour les autres types d'utilisateurs (à implémenter avec de vrais hooks)
+  const [agentsSFD, setAgentsSFD] = useState([]);
+  const [superviseursSFD, setSuperviseursSFD] = useState([]);
+  const [adminsSFD, setAdminsSFD] = useState([]);
+
+  // Données mockées pour les utilisateurs non encore intégrés
+  const mockAgentsSFD = [
     {
-      id: 'USR001',
-      nom: 'Marie JOHNSON',
-      prenom: 'Marie',
-      email: 'marie.johnson@email.com',
-      telephone: '+229 97 12 34 56',
-      adresse: 'Cotonou, Littoral',
-      profession: 'Commerçante',
-      role: 'Client',
-      statut: 'actif',
-      dateInscription: '2024-03-15T10:30:00Z',
-      derniereConnexion: '2025-06-12T08:45:00Z',
-      tontinesActives: 2,
-      comptesEpargne: 1,
-      scoreCredit: 85,
-      totalCotisations: 45000,
-      retraitsEffectues: 3,
-      statsPeriode: {
-        connexions: 12,
-        transactions: 8
-      }
-    },
-    {
-      id: 'USR002',
-      nom: 'AHOYO Bernadette',
+      id: 'AGT001',
+      nom: 'AHOYO',
       prenom: 'Bernadette',
       email: 'b.ahoyo@sfdportionovo.bj',
       telephone: '+229 97 23 45 67',
       adresse: 'Porto-Novo, Ouémé',
       profession: 'Agent SFD',
-      role: 'Agent SFD',
       statut: 'actif',
-      dateInscription: '2023-01-10T09:00:00Z',
-      derniereConnexion: '2025-06-12T14:20:00Z',
+      dateCreation: '2023-01-10T09:00:00Z',
+      derniere_connexion: '2025-06-12T14:20:00Z',
       clientsGeres: 45,
-      adhesionsValidees: 127,
-      retraitsTraites: 89,
-      performanceScore: 92,
-      statsPeriode: {
-        connexions: 25,
-        actionsValidees: 15
-      }
+      performanceScore: 92
     },
     {
-      id: 'USR003',
-      nom: 'DOSSA Paulin',
-      prenom: 'Paulin',
-      email: 'p.dossa@sfdportionovo.bj',
-      telephone: '+229 96 34 56 78',
-      adresse: 'Parakou, Borgou',
-      profession: 'Superviseur SFD',
-      role: 'Superviseur SFD',
-      statut: 'actif',
-      dateInscription: '2022-08-20T14:15:00Z',
-      derniereConnexion: '2025-06-12T13:10:00Z',
-      pretsSupervises: 156,
-      pretsApprouves: 142,
-      tauxApprobation: 91.0,
-      performanceScore: 88,
-      statsPeriode: {
-        connexions: 20,
-        pretsTraites: 8
-      }
-    },
-    {
-      id: 'USR004',
-      nom: 'Fatou AHOUNOU',
-      prenom: 'Fatou',
-      email: 'fatou.ahounou@email.com',
-      telephone: '+229 95 45 67 89',
-      adresse: 'Abomey, Zou',
-      profession: 'Couturière',
-      role: 'Client',
-      statut: 'inactif',
-      dateInscription: '2024-05-22T16:45:00Z',
-      derniereConnexion: '2025-04-18T12:30:00Z',
-      tontinesActives: 1,
-      comptesEpargne: 0,
-      scoreCredit: 78,
-      totalCotisations: 32000,
-      retraitsEffectues: 1,
-      statsPeriode: {
-        connexions: 0,
-        transactions: 0
-      }
-    },
-    {
-      id: 'USR005',
-      nom: 'KPADE Michel',
+      id: 'AGT002',
+      nom: 'KPADE',
       prenom: 'Michel',
       email: 'm.kpade@sfdportionovo.bj',
       telephone: '+229 94 56 78 90',
       adresse: 'Bohicon, Zou',
       profession: 'Agent SFD',
-      role: 'Agent SFD',
       statut: 'suspendu',
-      dateInscription: '2023-11-05T11:20:00Z',
-      derniereConnexion: '2025-05-28T09:15:00Z',
+      dateCreation: '2023-11-05T11:20:00Z',
+      derniere_connexion: '2025-05-28T09:15:00Z',
       clientsGeres: 32,
-      adhesionsValidees: 78,
-      retraitsTraites: 45,
-      performanceScore: 65,
-      motifSuspension: 'Validation incorrecte répétée',
-      statsPeriode: {
-        connexions: 5,
-        actionsValidees: 2
-      }
-    },
-    {
-      id: 'USR006',
-      nom: 'Adjoa MENSAH',
-      prenom: 'Adjoa',
-      email: 'adjoa.mensah@email.com',
-      telephone: '+229 93 67 89 01',
-      adresse: 'Natitingou, Atacora',
-      profession: 'Agricultrice',
-      role: 'Client',
-      statut: 'actif',
-      dateInscription: '2023-12-08T13:50:00Z',
-      derniereConnexion: '2025-06-11T19:30:00Z',
-      tontinesActives: 1,
-      comptesEpargne: 2,
-      scoreCredit: 72,
-      totalCotisations: 28000,
-      retraitsEffectues: 2,
-      statsPeriode: {
-        connexions: 8,
-        transactions: 5
-      }
+      performanceScore: 65
     }
   ];
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.telephone.includes(searchTerm);
-    
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.statut === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const mockSuperviseursSFD = [
+    {
+      id: 'SUP001',
+      nom: 'DOSSA',
+      prenom: 'Paulin',
+      email: 'p.dossa@sfdportionovo.bj',
+      telephone: '+229 96 34 56 78',
+      adresse: 'Parakou, Borgou',
+      profession: 'Superviseur SFD',
+      statut: 'actif',
+      dateCreation: '2022-08-20T14:15:00Z',
+      derniere_connexion: '2025-06-12T13:10:00Z',
+      pretsSupervises: 156,
+      tauxApprobation: 91.0
+    }
+  ];
 
+  const mockAdminsSFD = [
+    {
+      id: 'ASFD001',
+      nom: 'HOUNSOU',
+      prenom: 'Charles',
+      email: 'c.hounsou@sfdportionovo.bj',
+      telephone: '+229 95 11 22 33',
+      adresse: 'Cotonou, Littoral',
+      profession: 'Administrateur SFD',
+      statut: 'actif',
+      dateCreation: '2022-01-15T10:00:00Z',
+      derniere_connexion: '2025-06-12T16:45:00Z',
+      sfdGere: 'SFD Porto-Novo',
+      permissions: ['gestion_tontines', 'validation_prets', 'gestion_agents']
+    }
+  ];
+
+  // Configuration des onglets
+  const tabs: UserTab[] = [
+    {
+      id: 'clients',
+      label: 'Clients',
+      icon: User,
+      count: clients.length,
+      color: 'blue'
+    },
+    {
+      id: 'agents',
+      label: 'Agents SFD',
+      icon: UserCog,
+      count: mockAgentsSFD.length,
+      color: 'emerald'
+    },
+    {
+      id: 'superviseurs',
+      label: 'Superviseurs SFD',
+      icon: Shield,
+      count: mockSuperviseursSFD.length,
+      color: 'purple'
+    },
+    {
+      id: 'admins-sfd',
+      label: 'Admins SFD',
+      icon: Building,
+      count: mockAdminsSFD.length,
+      color: 'orange'
+    },
+    {
+      id: 'admins-plateforme',
+      label: 'Admins Plateforme',
+      icon: Crown,
+      count: adminsplateforme.length,
+      color: 'red'
+    }
+  ];
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    fetchClients();
+    fetchAdminsPlateforme();
+  }, []);
+
+  // Fonction pour obtenir les données de l'onglet actif
+  const getActiveTabData = () => {
+    switch (activeTab) {
+      case 'clients':
+        return {
+          data: clients,
+          loading: clientsLoading,
+          error: clientsError
+        };
+      case 'agents':
+        return {
+          data: mockAgentsSFD,
+          loading: false,
+          error: null
+        };
+      case 'superviseurs':
+        return {
+          data: mockSuperviseursSFD,
+          loading: false,
+          error: null
+        };
+      case 'admins-sfd':
+        return {
+          data: mockAdminsSFD,
+          loading: false,
+          error: null
+        };
+      case 'admins-plateforme':
+        return {
+          data: adminsplateforme,
+          loading: adminsLoading,
+          error: adminsError
+        };
+      default:
+        return { data: [], loading: false, error: null };
+    }
+  };
+
+  // Filtrer les données selon la recherche et le statut
+  const getFilteredData = () => {
+    const { data } = getActiveTabData();
+    
+    return data.filter((user: any) => {
+      const matchesSearch = 
+        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.telephone?.includes(searchTerm);
+      
+      const matchesStatus = statusFilter === 'all' || 
+        user.statut === statusFilter || 
+        user.est_actif === (statusFilter === 'actif');
+      
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  // Fonction pour obtenir le badge de statut
+  const getStatusBadge = (user: any) => {
+    const statut = user.statut || (user.est_actif ? 'actif' : 'inactif');
+    
+    switch (statut) {
+      case 'actif':
+        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Actif</span>;
+      case 'inactif':
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Inactif</span>;
+      case 'suspendu':
+        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Suspendu</span>;
+      default:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Inconnu</span>;
+    }
+  };
+
+  // Fonction pour rendre les informations spécifiques selon le type d'utilisateur
+  const renderUserSpecificInfo = (user: any) => {
+    switch (activeTab) {
+      case 'clients':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Score: {user.scorefiabilite || 'N/A'}/100</div>
+            <div>Tontines: {user.tontines_count || 0}</div>
+            <div className="text-xs text-gray-500">
+              Inscrit le {formatDate(user.dateCreation)}
+            </div>
+          </div>
+        );
+      case 'agents':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Clients gérés: {user.clientsGeres}</div>
+            <div>Performance: {user.performanceScore}%</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'superviseurs':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Prêts supervisés: {user.pretsSupervises}</div>
+            <div>Taux approbation: {user.tauxApprobation}%</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'admins-sfd':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>SFD: {user.sfdGere}</div>
+            <div>Permissions: {user.permissions?.length || 0}</div>
+            <div className="text-xs text-gray-500">
+              Dernière connexion: {formatDate(user.derniere_connexion)}
+            </div>
+          </div>
+        );
+      case 'admins-plateforme':
+        return (
+          <div className="space-y-1 text-sm">
+            <div>Gestion comptes: {user.peut_gerer_comptes ? 'Oui' : 'Non'}</div>
+            <div>Gestion SFD: {user.peut_gerer_sfd ? 'Oui' : 'Non'}</div>
+            <div className="text-xs text-gray-500">
+              Super administrateur
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Actions sur les utilisateurs
   const handleUserAction = async (userId: string, action: string) => {
     try {
-      // Simulation API call
+      // Simulation d'action API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       let message = '';
@@ -209,96 +361,96 @@ const UsersManagement = () => {
         case 'resetPassword':
           message = 'Mot de passe réinitialisé - Lien envoyé par SMS';
           break;
-        case 'delete':
-          message = 'Utilisateur supprimé avec succès';
-          break;
         default:
           message = 'Action effectuée avec succès';
       }
       
       toast.success(message);
-      console.log(`Action ${action} effectuée sur l'utilisateur ${userId}`);
-      
     } catch (error) {
-      toast.error('Erreur lors de l\'exécution de l\'action');
+      toast.error('Erreur lors de l\'action');
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'Client':
-        return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Client</span>;
-      case 'Agent SFD':
-        return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">Agent</span>;
-      case 'Superviseur SFD':
-        return <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">Superviseur</span>;
-      case 'Administrateur SFD':
-        return <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">Admin</span>;
-      default:
-        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Utilisateur</span>;
-    }
-  };
+  const { data: currentData, loading, error } = getActiveTabData();
+  const filteredData = getFilteredData();
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'actif':
-        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <CheckCircle size={12} />
-          Actif
-        </span>;
-      case 'inactif':
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <Clock size={12} />
-          Inactif
-        </span>;
-      case 'suspendu':
-        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <Ban size={12} />
-          Suspendu
-        </span>;
-      default:
-        return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">Inconnu</span>;
-    }
-  };
-
-  const getPerformanceColor = (score: number) => {
-    if (score >= 85) return 'text-green-600';
-    if (score >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des utilisateurs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
+        {/* Navigation par onglets */}
+        <GlassCard className="p-1">
+          <div className="flex flex-wrap gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                  activeTab === tab.id
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                }`}
+              >
+                <tab.icon size={16} />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  activeTab === tab.id 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+
         {/* Statistiques rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <GlassCard className="p-4 text-center border-l-4 border-l-blue-500">
             <div className="text-2xl font-bold text-blue-600 mb-1">
-              {users.filter(u => u.role === 'Client').length}
+              {clients.length}
             </div>
             <div className="text-sm text-gray-600">Clients</div>
           </GlassCard>
           
           <GlassCard className="p-4 text-center border-l-4 border-l-emerald-500">
             <div className="text-2xl font-bold text-emerald-600 mb-1">
-              {users.filter(u => u.role === 'Agent SFD').length}
+              {mockAgentsSFD.length}
             </div>
-            <div className="text-sm text-gray-600">Agents</div>
+            <div className="text-sm text-gray-600">Agents SFD</div>
           </GlassCard>
           
           <GlassCard className="p-4 text-center border-l-4 border-l-purple-500">
             <div className="text-2xl font-bold text-purple-600 mb-1">
-              {users.filter(u => u.role === 'Superviseur SFD').length}
+              {mockSuperviseursSFD.length}
             </div>
             <div className="text-sm text-gray-600">Superviseurs</div>
+          </GlassCard>
+
+          <GlassCard className="p-4 text-center border-l-4 border-l-orange-500">
+            <div className="text-2xl font-bold text-orange-600 mb-1">
+              {mockAdminsSFD.length}
+            </div>
+            <div className="text-sm text-gray-600">Admins SFD</div>
           </GlassCard>
           
           <GlassCard className="p-4 text-center border-l-4 border-l-red-500">
             <div className="text-2xl font-bold text-red-600 mb-1">
-              {users.filter(u => u.statut === 'inactif' || u.statut === 'suspendu').length}
+              {adminsplateforme.length}
             </div>
-            <div className="text-sm text-gray-600">Inactifs/Suspendus</div>
+            <div className="text-sm text-gray-600">Admins Plateforme</div>
           </GlassCard>
         </div>
 
@@ -318,33 +470,18 @@ const UsersManagement = () => {
                 />
               </div>
 
-              {/* Filtres */}
-              <div className="flex gap-2">
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-40 bg-white/60">
-                    <User className="mr-2" size={16} />
-                    <SelectValue placeholder="Rôle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les rôles</SelectItem>
-                    <SelectItem value="Client">Clients</SelectItem>
-                    <SelectItem value="Agent SFD">Agents</SelectItem>
-                    <SelectItem value="Superviseur SFD">Superviseurs</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32 bg-white/60">
-                    <SelectValue placeholder="Statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous statuts</SelectItem>
-                    <SelectItem value="actif">Actif</SelectItem>
-                    <SelectItem value="inactif">Inactif</SelectItem>
-                    <SelectItem value="suspendu">Suspendu</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Filtre par statut */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 bg-white/60">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="actif">Actif</SelectItem>
+                  <SelectItem value="inactif">Inactif</SelectItem>
+                  <SelectItem value="suspendu">Suspendu</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Actions */}
@@ -354,11 +491,7 @@ const UsersManagement = () => {
                 Exporter
               </GlassButton>
               
-              <GlassButton
-                size="sm"
-                onClick={() => setShowCreateUser(true)}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
+              <GlassButton size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                 <Plus className="mr-2" size={16} />
                 Nouvel utilisateur
               </GlassButton>
@@ -374,14 +507,13 @@ const UsersManagement = () => {
                 <tr>
                   <th className="text-left p-4 font-semibold text-emerald-800">Utilisateur</th>
                   <th className="text-left p-4 font-semibold text-emerald-800">Contact</th>
-                  <th className="text-left p-4 font-semibold text-emerald-800">Rôle & Statut</th>
-                  <th className="text-left p-4 font-semibold text-emerald-800">Activité</th>
-                  <th className="text-left p-4 font-semibold text-emerald-800">Performance</th>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Statut</th>
+                  <th className="text-left p-4 font-semibold text-emerald-800">Informations</th>
                   <th className="text-right p-4 font-semibold text-emerald-800">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
+                {filteredData.map((user: any) => (
                   <tr key={user.id} className="hover:bg-white/50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -389,7 +521,9 @@ const UsersManagement = () => {
                           <User size={20} className="text-emerald-600" />
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">{user.prenom} {user.nom}</div>
+                          <div className="font-semibold text-gray-900">
+                            {user.prenom} {user.nom}
+                          </div>
                           <div className="text-sm text-gray-500">ID: {user.id}</div>
                           <div className="text-xs text-gray-500">{user.profession}</div>
                         </div>
@@ -414,65 +548,11 @@ const UsersManagement = () => {
                     </td>
                     
                     <td className="p-4">
-                      <div className="space-y-2">
-                        {getRoleBadge(user.role)}
-                        {getStatusBadge(user.statut)}
-                        {user.motifSuspension && (
-                          <div className="text-xs text-red-600">
-                            {user.motifSuspension}
-                          </div>
-                        )}
-                      </div>
+                      {getStatusBadge(user)}
                     </td>
                     
                     <td className="p-4">
-                      <div className="space-y-1 text-sm">
-                        <div>
-                          <strong>Inscription:</strong> {format(new Date(user.dateInscription), 'dd/MM/yyyy', { locale: fr })}
-                        </div>
-                        <div>
-                          <strong>Dernière connexion:</strong> {format(new Date(user.derniereConnexion), 'dd/MM/yyyy', { locale: fr })}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {user.statsPeriode.connexions} connexions ce mois
-                        </div>
-                      </div>
-                    </td>
-                    
-                    <td className="p-4">
-                      {user.role === 'Client' ? (
-                        <div className="space-y-1 text-sm">
-                          <div>Tontines: {user.tontinesActives}</div>
-                          <div>Épargne: {user.comptesEpargne}</div>
-                          <div className={`font-medium ${getPerformanceColor(user.scoreCredit ?? 0)}`}>
-                            Score: {user.scoreCredit}/100
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {user.totalCotisations?.toLocaleString()} FCFA cotisés
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-1 text-sm">
-                          {user.role === 'Agent SFD' && (
-                            <>
-                              <div>Clients: {user.clientsGeres}</div>
-                              <div>Validations: {user.adhesionsValidees}</div>
-                              <div className={`font-medium ${getPerformanceColor(user.performanceScore ?? 0)}`}>
-                                Performance: {user.performanceScore}%
-                              </div>
-                            </>
-                          )}
-                          {user.role === 'Superviseur SFD' && (
-                            <>
-                              <div>Prêts: {user.pretsSupervises}</div>
-                              <div>Approuvés: {user.pretsApprouves}</div>
-                              <div className={`font-medium ${getPerformanceColor(user.performanceScore ?? 0)}`}>
-                                Taux: {user.tauxApprobation}%
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
+                      {renderUserSpecificInfo(user)}
                     </td>
                     
                     <td className="p-4">
@@ -496,57 +576,27 @@ const UsersManagement = () => {
                           
                           <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                             <div className="py-1">
-                              <button
+                              <button 
                                 onClick={() => handleUserAction(user.id, 'resetPassword')}
                                 className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
                               >
                                 <Key size={14} />
                                 Réinitialiser mot de passe
                               </button>
-                              
-                              {user.statut === 'actif' ? (
-                                <button
-                                  onClick={() => handleUserAction(user.id, 'deactivate')}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                  <UserX size={14} />
-                                  Désactiver
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleUserAction(user.id, 'activate')}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                  <UserCheck size={14} />
-                                  Activer
-                                </button>
-                              )}
-                              
-                              {user.statut !== 'suspendu' ? (
-                                <button
-                                  onClick={() => handleUserAction(user.id, 'suspend')}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-yellow-50 text-yellow-600 flex items-center gap-2"
-                                >
-                                  <Ban size={14} />
-                                  Suspendre
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleUserAction(user.id, 'activate')}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-green-50 text-green-600 flex items-center gap-2"
-                                >
-                                  <Unlock size={14} />
-                                  Lever suspension
-                                </button>
-                              )}
-                              
+                              <button 
+                                onClick={() => handleUserAction(user.id, 'activate')}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <UserCheck size={14} />
+                                Modifier statut
+                              </button>
                               <hr className="my-1" />
-                              <button
-                                onClick={() => handleUserAction(user.id, 'delete')}
+                              <button 
+                                onClick={() => handleUserAction(user.id, 'suspend')}
                                 className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
                               >
-                                <Trash2 size={14} />
-                                Supprimer
+                                <Ban size={14} />
+                                Suspendre
                               </button>
                             </div>
                           </div>
@@ -559,23 +609,23 @@ const UsersManagement = () => {
             </table>
           </div>
           
-          {filteredUsers.length === 0 && (
+          {filteredData.length === 0 && (
             <div className="text-center py-12">
               <Users className="mx-auto mb-4 text-gray-400" size={48} />
               <p className="text-gray-600 text-lg mb-2">Aucun utilisateur trouvé</p>
               <p className="text-gray-500">
-                {searchTerm || roleFilter !== 'all' || statusFilter !== 'all' 
+                {searchTerm || statusFilter !== 'all' 
                   ? 'Essayez de modifier vos filtres' 
-                  : 'Aucun utilisateur enregistré'
+                  : 'Aucun utilisateur de ce type enregistré'
                 }
               </p>
             </div>
           )}
         </div>
 
-        {/* Modal de détails utilisateur (simplifié) */}
+        {/* Modal de détails utilisateur */}
         {showDetails && selectedUser && (
-          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
               <div className="flex justify-between items-center p-6 border-b">
                 <h3 className="text-xl font-semibold">
@@ -585,7 +635,7 @@ const UsersManagement = () => {
                   onClick={() => setShowDetails(false)}
                   className="p-2 hover:bg-gray-100 rounded-full"
                 >
-                  <Edit size={20} />
+                  ✕
                 </button>
               </div>
               <div className="p-6">
@@ -598,57 +648,69 @@ const UsersManagement = () => {
                       <div><strong>Téléphone:</strong> {selectedUser.telephone}</div>
                       <div><strong>Adresse:</strong> {selectedUser.adresse}</div>
                       <div><strong>Profession:</strong> {selectedUser.profession}</div>
-                      <div><strong>Rôle:</strong> {selectedUser.role}</div>
-                      <div><strong>Statut:</strong> {selectedUser.statut}</div>
+                      <div><strong>Statut:</strong> {getStatusBadge(selectedUser)}</div>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-semibold mb-3">Activité sur la plateforme</h4>
+                    <h4 className="font-semibold mb-3">Informations spécifiques</h4>
                     <div className="space-y-2 text-sm">
-                      <div><strong>Inscription:</strong> {format(new Date(selectedUser.dateInscription), 'dd MMMM yyyy', { locale: fr })}</div>
-                      <div><strong>Dernière connexion:</strong> {format(new Date(selectedUser.derniereConnexion), 'dd MMMM yyyy à HH:mm', { locale: fr })}</div>
-                      <div><strong>Connexions ce mois:</strong> {selectedUser.statsPeriode.connexions}</div>
-                      
-                      {selectedUser.role === 'Client' && (
+                      {activeTab === 'clients' && (
                         <>
-                          <div><strong>Tontines actives:</strong> {selectedUser.tontinesActives}</div>
-                          <div><strong>Comptes épargne:</strong> {selectedUser.comptesEpargne}</div>
-                          <div><strong>Score de crédit:</strong> {selectedUser.scoreCredit}/100</div>
-                          <div><strong>Total cotisations:</strong> {selectedUser.totalCotisations.toLocaleString()} FCFA</div>
-                          <div><strong>Retraits effectués:</strong> {selectedUser.retraitsEffectues}</div>
+                          <div><strong>Score de fiabilité:</strong> {selectedUser.scorefiabilite}/100</div>
+                          <div><strong>Nombre de tontines:</strong> {selectedUser.tontines_count || 0}</div>
+                          <div><strong>Email vérifié:</strong> {selectedUser.email_verifie ? 'Oui' : 'Non'}</div>
                         </>
                       )}
-                      
-                      {selectedUser.role === 'Agent SFD' && (
+                      {activeTab === 'agents' && (
                         <>
                           <div><strong>Clients gérés:</strong> {selectedUser.clientsGeres}</div>
-                          <div><strong>Adhésions validées:</strong> {selectedUser.adhesionsValidees}</div>
-                          <div><strong>Retraits traités:</strong> {selectedUser.retraitsTraites}</div>
-                          <div><strong>Score performance:</strong> {selectedUser.performanceScore}%</div>
+                          <div><strong>Score de performance:</strong> {selectedUser.performanceScore}%</div>
                         </>
                       )}
-                      
-                      {selectedUser.role === 'Superviseur SFD' && (
+                      {activeTab === 'superviseurs' && (
                         <>
                           <div><strong>Prêts supervisés:</strong> {selectedUser.pretsSupervises}</div>
-                          <div><strong>Prêts approuvés:</strong> {selectedUser.pretsApprouves}</div>
                           <div><strong>Taux d'approbation:</strong> {selectedUser.tauxApprobation}%</div>
-                          <div><strong>Score performance:</strong> {selectedUser.performanceScore}%</div>
                         </>
+                      )}
+                      {activeTab === 'admins-sfd' && (
+                        <>
+                          <div><strong>SFD géré:</strong> {selectedUser.sfdGere}</div>
+                          <div><strong>Permissions:</strong> {selectedUser.permissions?.join(', ')}</div>
+                        </>
+                      )}
+                      {activeTab === 'admins-plateforme' && (
+                        <>
+                          <div><strong>Gestion des comptes:</strong> {selectedUser.peut_gerer_comptes ? 'Autorisé' : 'Non autorisé'}</div>
+                          <div><strong>Gestion des SFD:</strong> {selectedUser.peut_gerer_sfd ? 'Autorisé' : 'Non autorisé'}</div>
+                        </>
+                      )}
+                      <div><strong>Date de création:</strong> {formatDateTime(selectedUser.dateCreation)}</div>
+                      {selectedUser.derniere_connexion && (
+                        <div><strong>Dernière connexion:</strong> {formatDateTime(selectedUser.derniere_connexion)}</div>
                       )}
                     </div>
                   </div>
                 </div>
-                
-                {selectedUser.motifSuspension && (
-                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <h4 className="font-semibold text-red-800 mb-2">Motif de suspension</h4>
-                    <p className="text-sm text-red-700">{selectedUser.motifSuspension}</p>
-                  </div>
-                )}
+              </div>
+              
+              <div className="flex justify-end gap-3 p-6 border-t">
+                <GlassButton variant="outline" onClick={() => setShowDetails(false)}>
+                  Fermer
+                </GlassButton>
+                <GlassButton className="bg-emerald-600 hover:bg-emerald-700">
+                  Modifier
+                </GlassButton>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Message d'erreur */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+            <p className="text-red-600">Erreur: {error}</p>
           </div>
         )}
       </div>

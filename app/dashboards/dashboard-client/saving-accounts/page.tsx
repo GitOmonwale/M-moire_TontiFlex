@@ -264,18 +264,6 @@ const SavingsAccountsOverview = () => {
                           'Aucun mouvement'}
                       </p>
                       <div className="flex gap-2">
-                        {account.statut === 'actif' && (
-                          <>
-                            <GlassButton size="sm" variant="outline">
-                              <ArrowUp size={16} className="mr-2" />
-                              Déposer
-                            </GlassButton>
-                            <GlassButton size="sm" variant="outline">
-                              <ArrowDown size={16} className="mr-2" />
-                              Retirer
-                            </GlassButton>
-                          </>
-                        )}
                         <Link href={`/dashboards/dashboard-client/saving-accounts/${account.idAdherents}`}>
                           <GlassButton size="sm">
                             <Eye size={16} className="mr-2" />

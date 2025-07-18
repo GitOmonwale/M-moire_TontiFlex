@@ -77,12 +77,12 @@ const MyTontines = () => {
                         <div className="grid grid-cols-3 gap-4">
                             <div className="text-center p-3 bg-white/60 rounded-lg">
                                 <p className="text-xs text-gray-600 mb-1">Solde actuel</p>
-                                <p className="font-bold text-emerald-600">{tontine.solde_client.toLocaleString()}</p>
+                                <p className="font-bold text-emerald-600">{tontine.solde_client}</p>
                                 <p className="text-xs text-gray-500">FCFA</p>
                             </div>
                             <div className="text-center p-3 bg-white/60 rounded-lg">
                                 <p className="text-xs text-gray-600 mb-1">Mise journalière</p>
-                                <p className="font-bold text-blue-600">1,500</p>
+                                <p className="font-bold text-blue-600">{tontine.montantMinMise}</p>
                                 <p className="text-xs text-gray-500">FCFA</p>
                             </div>
                             <div className="text-center p-3 bg-white/60 rounded-lg">

@@ -39,7 +39,7 @@ import { useLoans } from "@/hooks/useLoans"; // Ajustez le chemin selon votre st
 import { MyLoan } from "@/types/loans";
 
 // Types et interfaces
-type LoanStatus = 'Actif' | 'En cours' | 'En attente' | 'Remboursé' | 'Suspendu';
+import { LoanStatus } from '@/types/loans';
 
 interface Loan {
   id: string;
@@ -79,20 +79,12 @@ const MyLoans: React.FC = () => {
 
   // Fonction pour mapper les statuts de l'API vers les statuts du composant
   const mapApiStatusToDisplayStatus = (apiStatus: string): LoanStatus => {
-    switch (apiStatus.toLowerCase()) {
-      case 'decaisse':
-      case 'en_remboursement':
-        return 'Actif';
-      case 'accorde':
-      case 'en_attente_decaissement':
-        return 'En attente';
-      case 'solde':
-        return 'Remboursé';
-      case 'en_defaut':
-        return 'Suspendu';
-      default:
-        return 'En attente';
+    // Since we're now using the API status directly, we just need to ensure it's a valid LoanStatus
+    const validStatuses: LoanStatus[] = ['accorde', 'en_attente_decaissement', 'decaisse', 'en_remboursement', 'solde', 'en_defaut'];
+    if (validStatuses.includes(apiStatus as LoanStatus)) {
+      return apiStatus as LoanStatus;
     }
+    return 'en_attente_decaissement'; // Default status
   };
 
   const allLoans = myLoans;
@@ -141,14 +133,17 @@ const MyLoans: React.FC = () => {
 
   const getStatusIcon = (status: LoanStatus): JSX.Element => {
     switch (status) {
-      case "Actif":
-      case "En cours":
-        return <CheckCircle className="text-green-600" size={16} />;
-      case "En attente":
+      case 'accorde':
+        return <CheckCircle className="text-blue-600" size={16} />;
+      case 'en_attente_decaissement':
         return <Clock className="text-yellow-600" size={16} />;
-      case "Remboursé":
-        return <BadgeCheck className="text-blue-600" size={16} />;
-      case "Suspendu":
+      case 'decaisse':
+        return <CheckCircle className="text-green-600" size={16} />;
+      case 'en_remboursement':
+        return <Clock className="text-purple-600" size={16} />;
+      case 'solde':
+        return <BadgeCheck className="text-gray-600" size={16} />;
+      case 'en_defaut':
         return <AlertCircle className="text-red-600" size={16} />;
       default:
         return <XCircle className="text-gray-600" size={16} />;
@@ -157,14 +152,17 @@ const MyLoans: React.FC = () => {
 
   const getStatusColor = (status: LoanStatus): string => {
     switch (status) {
-      case "Actif":
-      case "En cours":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "En attente":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Remboursé":
+      case 'accorde':
         return "bg-blue-100 text-blue-800 border-blue-200";
-      case "Suspendu":
+      case 'en_attente_decaissement':
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case 'decaisse':
+        return "bg-green-100 text-green-800 border-green-200";
+      case 'en_remboursement':
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case 'solde':
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      case 'en_defaut':
         return "bg-red-100 text-red-800 border-red-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
@@ -174,7 +172,7 @@ const MyLoans: React.FC = () => {
   // Fonction pour vérifier si une SFD peut accorder un nouveau prêt
   const canRequestNewLoan = (sfdName: string): boolean => {
     const sfdLoans = allLoans.filter(loan => loan.nom_sfd === sfdName);
-    return !sfdLoans.some(loan => loan.status === "Actif" || loan.status === "En cours");
+    return !sfdLoans.some(loan => loan.status === "decaisse" || loan.status === "en_remboursement");
   };
 
   // Obtenir les SFD avec prêts actifs
@@ -202,15 +200,10 @@ const MyLoans: React.FC = () => {
   if (loading && allLoans.length === 0) {
     return (
       <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <Loader2 className="mx-auto mb-4 animate-spin text-blue-600" size={48} />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Chargement de vos prêts</h3>
-              <p className="text-gray-600">Veuillez patienter...</p>
+    <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600">Chargement...</span>
             </div>
-          </div>
-        </div>
       </div>
     );
   }
@@ -256,7 +249,7 @@ const MyLoans: React.FC = () => {
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 Actualiser
               </GlassButton>
-              <Link href="/dashboards/dashboard-client/loans/new">
+              <Link href="/dashboards/dashboard-client/saving-accounts">
                 <GlassButton
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
@@ -365,9 +358,9 @@ const MyLoans: React.FC = () => {
                     </div>
                     <div className={cn(
                       "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border",
-                      getStatusColor(loan.status)
+                      getStatusColor(loan.status as LoanStatus)
                     )}>
-                      {getStatusIcon(loan.status)}
+                      {getStatusIcon(loan.status as LoanStatus)}
                       {loan.status}
                     </div>
                   </div>
@@ -450,7 +443,7 @@ const MyLoans: React.FC = () => {
         </div>
 
         {filteredLoans.length === 0 && !loading && (
-          <GlassCard className="p-12 text-center">
+          <GlassCard className="p-12 text-center" hover={false}>
             <CreditCard className="mx-auto mb-4 text-gray-400" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun prêt trouvé</h3>
             <p className="text-gray-600 mb-6">
@@ -459,10 +452,6 @@ const MyLoans: React.FC = () => {
                 : "Vous n'avez pas encore de prêt."
               }
             </p>
-            <GlassButton onClick={handleNewLoan}>
-              <Plus size={16} className="mr-2" />
-              Faire une demande de prêt
-            </GlassButton>
           </GlassCard>
         )}
 

@@ -157,7 +157,7 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
                 id="phone"
                 type="tel"
                 name="phone"
-                placeholder="Ex: 12345678"
+                placeholder="Ex: +22997000000"
                 value={retraitData.numero_telephone}
                 onChange={(e) => handlePhoneChange(e.target.value)}
                 required

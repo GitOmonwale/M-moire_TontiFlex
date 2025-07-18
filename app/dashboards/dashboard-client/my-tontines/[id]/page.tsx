@@ -91,7 +91,6 @@ const TontineDetailsPage = () => {
 
         } catch (error) {
             console.error('❌ Erreur confirmation paiement:', error);
-            toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
         }
     };
 

@@ -3,9 +3,22 @@ import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { SuperviseurSFDAdmin, SuperviseurSFDFilters, PaginatedSuperviseurSFDAdminList, CreateSuperviseurSFDData, UpdateSuperviseurSFDData } from '../../types/superviseurs-sfd';
 
+// 🆕 Types pour l'historique des actions
+export interface SuperviseurSFDAction {
+  date: string;
+  type: string;
+  detail: string;
+}
+
+export interface SuperviseurSFDActionsResponse {
+  superviseur_id: string;
+  actions: SuperviseurSFDAction[];
+}
+
 interface useSuperviseursSFDResults {
   superviseursSFD: SuperviseurSFDAdmin[];
   superviseurSFD: SuperviseurSFDAdmin | null;
+  superviseurActions: SuperviseurSFDAction[] | null;
   loading: boolean;
   error: string | null;
 
@@ -16,11 +29,15 @@ interface useSuperviseursSFDResults {
   updateSuperviseurSFD: (id: string, superviseurData: UpdateSuperviseurSFDData) => Promise<SuperviseurSFDAdmin>;
   updateSuperviseurSFDPartial: (id: string, superviseurData: Partial<UpdateSuperviseurSFDData>) => Promise<SuperviseurSFDAdmin>;
   deleteSuperviseurSFD: (id: string) => Promise<boolean>;
+  
+  // 🆕 Nouvelle méthode pour l'historique des actions
+  fetchSuperviseurSFDActions: (id: string) => Promise<SuperviseurSFDActionsResponse>;
 }
 
 export function useSuperviseursSFD(): useSuperviseursSFDResults {
   const [superviseursSFD, setSuperviseursSFD] = useState<SuperviseurSFDAdmin[]>([]);
   const [superviseurSFD, setSuperviseurSFD] = useState<SuperviseurSFDAdmin | null>(null);
+  const [superviseurActions, setSuperviseurActions] = useState<SuperviseurSFDAction[] | null>(null); // 🆕
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accessToken } = useAuth();
@@ -88,6 +105,47 @@ export function useSuperviseursSFD(): useSuperviseursSFDResults {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       toast.error('Erreur lors du chargement du superviseur SFD');
       return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 Récupérer l'historique des actions d'un superviseur SFD
+  const fetchSuperviseurSFDActions = async (id: string): Promise<SuperviseurSFDActionsResponse> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/admin/superviseurs-sfd/${id}/actions/`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        let errorMessage = 'Erreur lors du chargement de l\'historique des actions';
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (response.status === 403) {
+            errorMessage = 'Permissions insuffisantes pour consulter l\'historique';
+          } else if (response.status === 404) {
+            errorMessage = 'Superviseur SFD introuvable';
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const actionsData: SuperviseurSFDActionsResponse = await response.json();
+      setSuperviseurActions(actionsData.actions);
+      console.log("Actions du superviseur SFD", actionsData.actions);
+      return actionsData;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(errorMessage);
+      toast.error('Erreur lors du chargement de l\'historique des actions');
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -279,10 +337,12 @@ export function useSuperviseursSFD(): useSuperviseursSFDResults {
   return {
     superviseursSFD,
     superviseurSFD,
+    superviseurActions,
     loading,
     error,
     fetchSuperviseursSFD,
     fetchSuperviseurSFDById,
+    fetchSuperviseurSFDActions,
     createSuperviseurSFD,
     updateSuperviseurSFD,
     updateSuperviseurSFDPartial,

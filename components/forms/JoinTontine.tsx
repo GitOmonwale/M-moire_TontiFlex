@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Upload, FileText, AlertCircle, CheckCircle, Coins, Users, Info } from 'lucide-react';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassCard } from '@/components/GlassCard';
@@ -43,6 +44,7 @@ const JoinTontineModal: React.FC<JoinTontineModalProps> = ({
 
   // Utilisation du hook useAdhesions
   const { createAdhesion, loading: isSubmitting } = useAdhesions();
+  const router = useRouter();
 
   const [formData, setFormData] = useState<JoinTontineFormData>({
     tontine: tontine?.id || '',
@@ -209,14 +211,18 @@ const JoinTontineModal: React.FC<JoinTontineModalProps> = ({
       };
 
       // Appel de la fonction createAdhesion du hook
+      console.log('🚀 Envoi de la demande d\'adhésion...', submitData);
       const newAdhesion = await createAdhesion(submitData);
       toast.success("Votre demande d'adhésion a bien été prise en compte. Vous serez notifié(e) par email de la décision.");
-      console.log('Demande d\'adhésion créée avec succès:', newAdhesion);
-
-      // Succès
+      
+      // Fermer la modale et réinitialiser le formulaire
       onSuccess();
+      
+      // Rediriger vers la page des adhésions après un court délai
+      setTimeout(() => {
+        router.push('/dashboards/dashboard-client/');
+      }, 1500);
 
-      // Réinitialiser le formulaire
       setFormData({
         tontine: '',
         montant_mise: '',
@@ -231,8 +237,7 @@ const JoinTontineModal: React.FC<JoinTontineModalProps> = ({
 
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
-      // L'erreur est déjà gérée par le hook useAdhesions avec toast.error
-      // On peut ajouter une erreur de formulaire si nécessaire
+      toast.error("Une erreur est survenue lors de l'envoi de votre demande d'adhésion.");
       if (error instanceof Error) {
         setErrors({ submit: error.message });
       }
@@ -243,7 +248,6 @@ const JoinTontineModal: React.FC<JoinTontineModalProps> = ({
     if (!isSubmitting) {
       onClose();
 
-      // Réinitialiser le formulaire après fermeture
       setTimeout(() => {
         setFormData({
           tontine: '',

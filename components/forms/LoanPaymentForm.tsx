@@ -88,7 +88,6 @@ const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
             
           } catch (error) {
             console.error('Erreur notification backend:', error);
-            toast.error('⚠️ Paiement réussi mais erreur de synchronisation');
           } finally {
             setStep('form');
           }

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Input } from '@/components/ui/input';
@@ -22,155 +22,74 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useRetraits } from '@/hooks/useWithdrawals';
+import { Retrait } from '@/types/retraits';
 
-// Interface pour les demandes de retrait
-interface DemandeRetrait {
-  id: number;
-  clientId: string;
-  clientName: string;
-  telephone: string;
-  tontine: {
-    id: string;
-    name: string;
-    type: string;
-  };
-  montantDemande: number;
-  soldeClient: number;
-  numeroMobileMoney: string;
-  operateurMM: 'MTN' | 'Moov';
-  datedemande: string;
-  status: 'en_attente' | 'approuve' | 'rejete';
-  notes?: string;
-  raison?: string;
-  fondsSFDDisponibles: number;
-}
-
-// Données mockées pour les demandes de retrait
-const demandesRetrait: DemandeRetrait[] = [
-  {
-    id: 1,
-    clientId: "CLI001",
-    clientName: "Fatoumata SAGNA",
-    telephone: "+229 97 11 22 33",
-    tontine: {
-      id: "TON001",
-      name: "Tontine ALAFIA",
-      type: "Épargne"
-    },
-    montantDemande: 15000,
-    soldeClient: 25000,
-    numeroMobileMoney: "+229 97 11 22 33",
-    operateurMM: "MTN",
-    datedemande: "2025-06-20T10:30:00Z",
-    status: "en_attente",
-    fondsSFDDisponibles: 150000
-  },
-  {
-    id: 2,
-    clientId: "CLI002",
-    clientName: "Mariam TRAORE",
-    telephone: "+229 96 44 55 66",
-    tontine: {
-      id: "TON002",
-      name: "Tontine Entrepreneures",
-      type: "Crédit"
-    },
-    montantDemande: 8000,
-    soldeClient: 12000,
-    numeroMobileMoney: "+229 96 44 55 66",
-    operateurMM: "Moov",
-    datedemande: "2025-06-19T15:45:00Z",
-    status: "en_attente",
-    notes: "Client prioritaire - traitement urgent",
-    fondsSFDDisponibles: 45000
-  },
-  {
-    id: 3,
-    clientId: "CLI003",
-    clientName: "Aissatou BARRY",
-    telephone: "+229 95 77 88 99",
-    tontine: {
-      id: "TON001",
-      name: "Tontine ALAFIA",
-      type: "Épargne"
-    },
-    montantDemande: 5000,
-    soldeClient: 45000,
-    numeroMobileMoney: "+229 95 77 88 99",
-    operateurMM: "MTN",
-    datedemande: "2025-06-18T09:15:00Z",
-    status: "en_attente",
-    fondsSFDDisponibles: 150000
-  }
-];
 
 const AgentSFDRetraitsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedDemande, setSelectedDemande] = useState<DemandeRetrait | null>(null);
+  const [selectedDemande, setSelectedDemande] = useState<Retrait | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [fondsSFDTotal, setFondsSFDTotal] = useState(185000);
-
+const {fetchRetraits, retraits, validerRetrait, initierVirement} = useRetraits();
+useEffect(() => {
+  fetchRetraits();
+  console.log("retraits",retraits);
+}, []);
   // Filtrage des demandes
-  const filteredDemandes = demandesRetrait.filter(demande => {
-    const searchMatch = demande.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredDemandes = retraits.filter(demande => {
+    const searchMatch = demande.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
       demande.telephone.includes(searchTerm) ||
-      demande.tontine.name.toLowerCase().includes(searchTerm.toLowerCase());
+      demande.tontine.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const statusMatch = filterStatus === "all" || demande.status === filterStatus;
+    const statusMatch = filterStatus === "all" || demande.statut === filterStatus;
 
     return searchMatch && statusMatch;
   });
 
-  const handleApproveRetrait = (demande: DemandeRetrait) => {
-    console.log(`Approbation retrait pour ${demande.clientName} - Montant: ${demande.montantDemande} FCFA`);
-    // Ici vous ajouteriez la logique pour approuver le retrait
-    // API call, vérification fonds, etc.
+  const handleApproveRetrait = (demande: Retrait) => {
+    console.log(`Approbation retrait pour ${demande.client} - Montant: ${demande.montant} FCFA`);
+    validerRetrait(demande.id, { decision: 'approved', commentaire: 'Retrait approuvé' });
+    initierVirement(demande.id, { telephone: demande.telephone });
   };
 
-  const handleRejectRetrait = (demande: DemandeRetrait, raison: string) => {
-    console.log(`Rejet retrait pour ${demande.clientName}. Raison: ${raison}`);
-    // Ici vous ajouteriez la logique pour rejeter le retrait
+  const handleRejectRetrait = (demande: Retrait, raison: string) => {
+    console.log(`Rejet retrait pour ${demande.client}. Raison: ${raison}`);
+    validerRetrait(demande.id, { decision: 'rejected', commentaire: raison });
     setShowRejectModal(false);
     setRejectReason("");
   };
 
-  const handleViewDetails = (demande: DemandeRetrait) => {
+  const handleViewDetails = (demande: Retrait) => {
     setSelectedDemande(demande);
     setShowModal(true);
   };
 
-  const handleRejectClick = (demande: DemandeRetrait) => {
+  const handleRejectClick = (demande: Retrait) => {
     setSelectedDemande(demande);
     setShowRejectModal(true);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'en_attente':
+      case 'pending':
         return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'approuve':
+      case 'approved':
         return 'bg-green-100 text-green-700 border-green-200';
-      case 'rejete':
+      case 'rejected':
         return 'bg-red-100 text-red-700 border-red-200';
+      case 'confirmee':
+        return 'bg-green-500 text-green-700 border-green-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
-  const getOperatorColor = (operateur: string) => {
-    return operateur === 'MTN' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800';
-  };
-
-  const canApprove = (demande: DemandeRetrait) => {
-    return demande.soldeClient >= demande.montantDemande &&
-      demande.fondsSFDDisponibles >= demande.montantDemande;
-  };
-
-  const getValidationStatus = (demande: DemandeRetrait) => {
-    if (demande.fondsSFDDisponibles < demande.montantDemande) {
+  const getValidationStatus = (demande: Retrait) => {
+    if (fondsSFDTotal < Number(demande.montant)) {
       return {
         valid: false,
         message: "Fonds SFD insuffisants",
@@ -199,7 +118,7 @@ const AgentSFDRetraitsPage = () => {
               <div>
                 <p className="text-sm text-gray-600">En attente</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {demandesRetrait.filter(d => d.status === 'en_attente').length}
+                  {retraits.filter(d => d.statut === 'pending').length}
                 </p>
               </div>
               <Clock className="text-orange-600" size={24} />
@@ -210,7 +129,9 @@ const AgentSFDRetraitsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Approuvées</p>
-                <p className="text-2xl font-bold text-green-600">42</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {retraits.filter(d => d.statut === 'approved').length}
+                </p>
               </div>
               <CheckCircle className="text-green-600" size={24} />
             </div>
@@ -221,7 +142,7 @@ const AgentSFDRetraitsPage = () => {
               <div>
                 <p className="text-sm text-gray-600">Montant total</p>
                 <p className="text-xl font-bold text-blue-600">
-                  {demandesRetrait.reduce((sum, d) => sum + (d.status === 'en_attente' ? d.montantDemande : 0), 0).toLocaleString()}
+                  {retraits.reduce((sum, d) => sum + (d.statut === 'pending' ? Number(d.montant) : 0), 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">FCFA</p>
               </div>
@@ -294,7 +215,6 @@ const AgentSFDRetraitsPage = () => {
                 <th className="px-2 py-2 text-left">Téléphone</th>
                 <th className="px-2 py-2 text-left">Tontine</th>
                 <th className="px-2 py-2 text-left">Montant</th>
-                <th className="px-2 py-2 text-left">Opérateur</th>
                 <th className="px-2 py-2 text-left">Date</th>
                 <th className="px-2 py-2 text-center">Statut</th>
                 <th className="px-2 py-2 text-center">Actions</th>
@@ -316,18 +236,15 @@ const AgentSFDRetraitsPage = () => {
                     <tr key={demande.id}
                       className={cn("bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md")}
                     >
-                      <td className="px-2 py-2 font-semibold text-gray-900 align-middle">{demande.clientName}</td>
+                      <td className="px-2 py-2 font-semibold text-gray-900 align-middle">{demande.client_nom} {demande.client_prenom}</td>
                       <td className="px-2 py-2 text-gray-700 align-middle">{demande.telephone}</td>
-                      <td className="px-2 py-2 text-gray-700 align-middle">{demande.tontine.name}</td>
-                      <td className="px-2 py-2 text-green-700 align-middle font-bold">{demande.montantDemande.toLocaleString()} FCFA</td>
-                      <td className="px-2 py-2 text-gray-700 align-middle">
-                        <span className={cn("px-2 py-1 rounded-full text-xs font-medium", getOperatorColor(demande.operateurMM))}>{demande.operateurMM}</span>
-                      </td>
-                      <td className="px-2 py-2 text-gray-700 align-middle">{format(new Date(demande.datedemande), 'dd/MM/yyyy HH:mm', { locale: fr })}</td>
+                      <td className="px-2 py-2 text-gray-700 align-middle">{demande.tontine_nom}</td>
+                      <td className="px-2 py-2 text-green-700 align-middle font-bold">{demande.montant.toLocaleString()} FCFA</td>
+                      <td className="px-2 py-2 text-center align-middle">{format(new Date(demande.date_demande_retrait), "dd/MM/yyyy HH:mm", { locale: fr })}</td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <span className={cn("px-3 py-1 text-nowrap rounded-full text-xs font-medium border", getStatusBadge(demande.status))}>
-                          {demande.status === 'en_attente' ? 'En attente' :
-                            demande.status === 'approuve' ? 'Approuvée' : 'Rejetée'}
+                        <span className={cn("px-3 py-1 text-nowrap rounded-full text-xs font-medium border", getStatusBadge(demande.statut))}>
+                          {demande.statut === 'pending' ? 'En attente' :
+                            demande.statut === 'approved' ? 'Approuvée' : demande.statut === 'confirmee' ? 'Confirmée' : 'Rejetée'}
                         </span>
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
@@ -335,13 +252,12 @@ const AgentSFDRetraitsPage = () => {
                           <GlassButton size="sm" variant="outline" onClick={() => handleViewDetails(demande)}>
                             <Eye size={16} className="mr-1" />
                           </GlassButton>
-                          {demande.status === 'en_attente' && (
+                          {demande.statut === 'pending' && (
                             <>
                               <GlassButton
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700"
                                 onClick={() => handleApproveRetrait(demande)}
-                                disabled={!canApprove(demande)}
                               >
                                 <CheckCircle size={16} className="mr-1" />
                               </GlassButton>
@@ -383,11 +299,11 @@ const AgentSFDRetraitsPage = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Client</label>
-                    <p className="text-gray-900">{selectedDemande.clientName}</p>
+                    <p className="text-gray-900">{selectedDemande.client}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">ID Client</label>
-                    <p className="text-gray-900">{selectedDemande.clientId}</p>
+                    <p className="text-gray-900">{selectedDemande.client}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Téléphone</label>
@@ -395,29 +311,18 @@ const AgentSFDRetraitsPage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Tontine</label>
-                    <p className="text-gray-900">{selectedDemande.tontine.name}</p>
+                    <p className="text-gray-900">{selectedDemande.tontine}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Montant demandé</label>
-                    <p className="text-gray-900 font-bold">{selectedDemande.montantDemande.toLocaleString()} FCFA</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-600 mb-1">Solde disponible</label>
-                    <p className="text-gray-900">{selectedDemande.soldeClient.toLocaleString()} FCFA</p>
+                    <p className="text-gray-900 font-bold">{selectedDemande.montant.toLocaleString()} FCFA</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Numéro Mobile Money</label>
-                    <p className="text-gray-900">{selectedDemande.numeroMobileMoney}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-600 mb-1">Opérateur</label>
-                    <span className={cn("px-2 py-1 rounded-full text-xs font-medium",
-                      getOperatorColor(selectedDemande.operateurMM))}>
-                      {selectedDemande.operateurMM}
-                    </span>
+                    <p className="text-gray-900">{selectedDemande.telephone}</p>
                   </div>
                 </div>
-                {selectedDemande && (() => {
+                {selectedDemande.statut == 'pending' && (() => {
                   const validationStatus = getValidationStatus(selectedDemande);
                   return (
                     <div className={cn("mt-1 px-2 py-2 rounded mb-10 text-xs flex items-center gap-1 justify-center", validationStatus.bgClass, validationStatus.textClass)}>
@@ -427,14 +332,14 @@ const AgentSFDRetraitsPage = () => {
                   );
                 })()}
 
-                <div className="flex gap-3">
+                {selectedDemande.statut == 'pending' && (
+                  <div className="flex gap-3">
                   <GlassButton
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => {
                       handleApproveRetrait(selectedDemande);
                       setShowModal(false);
                     }}
-                    disabled={!canApprove(selectedDemande)}
                   >
                     <Check size={16} className="mr-2" />
                     Approuver le retrait
@@ -452,6 +357,7 @@ const AgentSFDRetraitsPage = () => {
                     Rejeter
                   </GlassButton>
                 </div>
+              )}
               </div>
             </div>
           </div>
@@ -473,8 +379,8 @@ const AgentSFDRetraitsPage = () => {
 
               <div className="p-6">
                 <p className="text-gray-700 mb-4">
-                  Vous êtes sur le point de rejeter la demande de retrait de <strong>{selectedDemande.clientName}</strong>
-                  pour un montant de <strong>{selectedDemande.montantDemande.toLocaleString()} FCFA</strong>.
+                  Vous êtes sur le point de rejeter la demande de retrait de <strong>{selectedDemande.client}</strong>
+                  pour un montant de <strong>{selectedDemande.montant.toLocaleString()} FCFA</strong>.
                 </p>
 
                 <div className="mb-4">
@@ -491,7 +397,6 @@ const AgentSFDRetraitsPage = () => {
                     <option value="autre">Autre raison</option>
                   </select>
                 </div>
-
                 <div className="flex gap-3">
                   <GlassButton
                     className="bg-red-600 hover:bg-red-700"

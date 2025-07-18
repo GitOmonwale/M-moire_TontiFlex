@@ -15,17 +15,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles = [] 
 }) => {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, userType, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       // Rediriger vers la page de connexion si non authentifié
       router.push('/auth/login');
-    } else if (!isLoading && isAuthenticated && user?.role) {
+    } else if (!isLoading && isAuthenticated && userType) {
       // Vérifier si l'utilisateur a accès à la route actuelle
-      if (allowedRoles.length > 0 && !allowedRoles.includes(user.role as RoleKey)) {
+      if (allowedRoles.length > 0 && !allowedRoles.includes(userType as RoleKey)) {
         // Rediriger vers le tableau de bord par défaut du rôle de l'utilisateur
-        const userRole = user.role as RoleKey;
+        const userRole = userType as RoleKey;
         const defaultRoute = DEFAULT_ROUTES[userRole] || '/';
         router.push(defaultRoute);
       }
@@ -34,7 +34,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Afficher un loader pendant le chargement
   if (isLoading || (!isAuthenticated && !isLoading) || 
-      (isAuthenticated && allowedRoles.length > 0 && user && !allowedRoles.includes(user.role))) {
+      (isAuthenticated && allowedRoles.length > 0 && user && !allowedRoles.includes(userType as RoleKey))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -49,12 +49,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Vérifier si l'utilisateur a le rôle requis (si des rôles sont spécifiés)
-  if (allowedRoles.length > 0 && user.role && !allowedRoles.includes(user.role as RoleKey)) {
-    console.log("Rôle utilisateur:", user.role);
+  if (allowedRoles.length > 0 && userType && !allowedRoles.includes(userType as RoleKey)) {
+    console.log("Rôle utilisateur:", userType);
     console.log("Rôles autorisés:", allowedRoles);
     
     // Rediriger vers le tableau de bord par défaut du rôle de l'utilisateur
-    const userRole = user.role as RoleKey;
+    const userRole = userType as RoleKey;
     const defaultRoute = DEFAULT_ROUTES[userRole] || '/';
     return <Link href={defaultRoute} />;
   }
