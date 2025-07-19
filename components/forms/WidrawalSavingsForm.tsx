@@ -5,7 +5,7 @@ import { CreditCard, AlertCircle, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@heroui/react';
 
-interface WithdrawalFormProps {
+interface WidrawalSavingsFormProps {
   isOpen: boolean;
   onClose: () => void;
   details: any;
@@ -13,7 +13,7 @@ interface WithdrawalFormProps {
   onSubmit: (retraitData: any) => Promise<void>;
 }
 
-const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
+const WidrawalSavingsForm: React.FC<WidrawalSavingsFormProps> = ({
   isOpen,
   onClose,
   details,
@@ -41,6 +41,16 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
     if (parseFloat(retraitData.montant) > parseFloat(details.solde_disponible)) {
       newErrors.montant = 'Le montant ne peut pas dépasser le solde disponible';
       toast.error('Le montant ne peut pas dépasser le solde disponible');
+    }
+
+    if (!retraitData.numero_telephone.trim()) {
+      newErrors.numero_telephone = 'Le numéro de téléphone est requis';
+      toast.error('Le numéro de téléphone est requis');
+    }
+
+    if (retraitData.numero_telephone && !/^[0-9]{8,}$/.test(retraitData.numero_telephone)) {
+      newErrors.numero_telephone = 'Format de numéro invalide (+229xxxxxxxx)';
+      toast.error('Format de numéro invalide (+229xxxxxxxx)');
     }
 
     setErrors(newErrors);
@@ -79,6 +89,17 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
     }
   };
 
+  const handlePhoneChange = (value: string) => {
+    // Ne conserver que les chiffres
+    const numbersOnly = value.replace(/\D/g, '');
+    setRetraitData(prev => ({ ...prev, numero_telephone: numbersOnly }));
+
+    // Effacer l'erreur si elle existe
+    if (errors.numero_telephone) {
+      setErrors(prev => ({ ...prev, numero_telephone: '' }));
+    }
+  };
+
   if (!isOpen) return null;
 
   const soldeDisponible = parseFloat(details.solde_disponible);
@@ -94,7 +115,7 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
           ✕
         </button>
 
-        <div className="space-y-6 overflow-y-auto">
+        <div className="space-y-6 h-[70vh] overflow-y-auto">
           {/* Header */}
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Effectuer un retrait</h2>
@@ -127,6 +148,38 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
               )}
             </div>
 
+            {/* Numéro de téléphone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Numéro de téléphone Mobile Money <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="phone"
+                type="tel"
+                name="phone"
+                placeholder="Ex: +22997000000"
+                value={retraitData.numero_telephone}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                required
+                className={`bg-white/50 border-primary/20 ${errors.numero_telephone ? 'border-red-500' : ''}`}
+                disabled={loading}
+              />
+              {errors.numero_telephone && <p className="text-red-500 text-xs">{errors.numero_telephone}</p>}
+            </div>
+            {/* Commentaire */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Motif du retrait (optionnel)
+              </label>
+              <textarea
+                value={retraitData.commentaire}
+                onChange={(e) => setRetraitData(prev => ({ ...prev, commentaire: e.target.value }))}
+                placeholder="Précisez le motif de votre retrait..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                rows={3}
+              />
+            </div>
+
             {/* Récapitulatif */}
             {montantSaisi > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -135,6 +188,10 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
                   <div className="flex justify-between">
                     <span className="text-gray-600">Montant demandé :</span>
                     <span className="font-medium">{montantSaisi.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Numéro de destination :</span>
+                    <span className="font-medium">{retraitData.numero_telephone || 'Non renseigné'}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="text-gray-600">Nouveau solde :</span>
@@ -158,7 +215,7 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
               </GlassButton>
               <GlassButton
                 onClick={handleSubmit}
-                disabled={loading || !retraitData.montant || montantSaisi > soldeDisponible}
+                disabled={loading || !retraitData.montant || !retraitData.numero_telephone || montantSaisi > soldeDisponible}
                 className="flex-1"
               >
                 {loading ? 'Traitement...' : `Retirer ${montantSaisi.toLocaleString()} FCFA`}
@@ -171,4 +228,4 @@ const WithdrawalForm: React.FC<WithdrawalFormProps> = ({
   );
 };
 
-export default WithdrawalForm;
+export default WidrawalSavingsForm;

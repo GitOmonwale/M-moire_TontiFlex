@@ -134,7 +134,6 @@ export function useRetraits(): useRetraitsResults {
 
       const newRetrait = await response.json();
       setRetraits(prev => [newRetrait, ...prev]);
-      toast.success('Demande de retrait créée avec succès');
       return newRetrait;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';

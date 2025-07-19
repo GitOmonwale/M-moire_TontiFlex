@@ -230,7 +230,7 @@ useEffect(() => {
                     <div className="flex-1">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{request.nom}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{request.nom} {request.prenom}</h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <div className="flex items-center">
                               <User className="mr-1" size={14} />

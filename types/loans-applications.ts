@@ -43,6 +43,7 @@ export interface LoanApplication {
   }
   
   export interface CreateLoanApplicationData {
+    compte_epargne: string;
     date_naissance: string;
     adresse_domicile: string;
     adresse_bureau?: string;

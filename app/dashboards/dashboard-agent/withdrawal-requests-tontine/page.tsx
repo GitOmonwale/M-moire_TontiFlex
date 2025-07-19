@@ -11,56 +11,91 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Download,
   X,
   Check,
   Ban,
   Wallet,
   TrendingDown,
-  RefreshCw
+  RefreshCw,
+  Send
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useRetraits } from '@/hooks/useWithdrawals';
-import { Retrait } from '@/types/retraits';
-
+import { Retrait, StatutRetrait } from '@/types/retraits';
 
 const AgentSFDRetraitsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<StatutRetrait | "all">("all");
   const [selectedDemande, setSelectedDemande] = useState<Retrait | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showVirementModal, setShowVirementModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [commentaire, setCommentaire] = useState("");
+  const [telephone, setTelephone] = useState("");
   const [fondsSFDTotal, setFondsSFDTotal] = useState(185000);
-const {fetchRetraits, retraits, validerRetrait, initierVirement} = useRetraits();
-useEffect(() => {
-  fetchRetraits();
-  console.log("retraits",retraits);
-}, []);
+  
+  const {
+    retraits,
+    loading,
+    error,
+    fetchRetraits,
+    validerRetrait,
+    initierVirement
+  } = useRetraits();
+
+  useEffect(() => {
+    fetchRetraits();
+  }, [fetchRetraits]);
+
   // Filtrage des demandes
   const filteredDemandes = retraits.filter(demande => {
-    const searchMatch = demande.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const searchMatch = demande.client_nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       demande.telephone.includes(searchTerm) ||
-      demande.tontine.toLowerCase().includes(searchTerm.toLowerCase());
+      demande.tontine_nom.toLowerCase().includes(searchTerm.toLowerCase());
 
     const statusMatch = filterStatus === "all" || demande.statut === filterStatus;
 
     return searchMatch && statusMatch;
   });
 
-  const handleApproveRetrait = (demande: Retrait) => {
-    console.log(`Approbation retrait pour ${demande.client} - Montant: ${demande.montant} FCFA`);
-    validerRetrait(demande.id, { decision: 'approved', commentaire: 'Retrait approuvé' });
-    initierVirement(demande.id, { telephone: demande.telephone });
+  const handleApproveRetrait = async (demande: Retrait) => {
+    try {
+      await validerRetrait(demande.id, {
+        decision: 'approved',
+        commentaire: commentaire || 'Retrait approuvé'
+      });
+      setCommentaire("");
+      setShowModal(false);
+    } catch (err) {
+      console.error('Erreur lors de l\'approbation:', err);
+    }
   };
 
-  const handleRejectRetrait = (demande: Retrait, raison: string) => {
-    console.log(`Rejet retrait pour ${demande.client}. Raison: ${raison}`);
-    validerRetrait(demande.id, { decision: 'rejected', commentaire: raison });
-    setShowRejectModal(false);
-    setRejectReason("");
+  const handleRejectRetrait = async (demande: Retrait, raison: string) => {
+    try {
+      await validerRetrait(demande.id, {
+        decision: 'rejected',
+        commentaire: raison
+      });
+      setShowRejectModal(false);
+      setRejectReason("");
+      setCommentaire("");
+    } catch (err) {
+      console.error('Erreur lors du rejet:', err);
+    }
+  };
+
+  const handleInitierVirement = async (demande: Retrait) => {
+    try {
+      await initierVirement(demande.id, {
+        telephone: telephone || demande.telephone
+      });
+      setShowVirementModal(false);
+      setTelephone("");
+    } catch (err) {
+      console.error('Erreur lors de l\'initiation du virement:', err);
+    }
   };
 
   const handleViewDetails = (demande: Retrait) => {
@@ -73,7 +108,13 @@ useEffect(() => {
     setShowRejectModal(true);
   };
 
-  const getStatusBadge = (status: string) => {
+  const handleVirementClick = (demande: Retrait) => {
+    setSelectedDemande(demande);
+    setTelephone(demande.telephone);
+    setShowVirementModal(true);
+  };
+
+  const getStatusBadge = (status: StatutRetrait) => {
     switch (status) {
       case 'pending':
         return 'bg-orange-100 text-orange-700 border-orange-200';
@@ -82,9 +123,24 @@ useEffect(() => {
       case 'rejected':
         return 'bg-red-100 text-red-700 border-red-200';
       case 'confirmee':
-        return 'bg-green-500 text-green-700 border-green-200';
+        return 'bg-blue-100 text-blue-700 border-blue-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getStatusLabel = (status: StatutRetrait) => {
+    switch (status) {
+      case 'pending':
+        return 'En attente';
+      case 'approved':
+        return 'Approuvé';
+      case 'rejected':
+        return 'Rejeté';
+      case 'confirmee':
+        return 'Confirmé';
+      default:
+        return status;
     }
   };
 
@@ -106,6 +162,21 @@ useEffect(() => {
       bgClass: "bg-green-50 border-green-200",
       textClass: "text-green-700"
     };
+  };
+
+  const getRejectReasonLabel = (reason: string) => {
+    switch (reason) {
+      case 'fonds_sfd_insuffisants':
+        return 'Fonds SFD insuffisants';
+      case 'documents_non_conformes':
+        return 'Documents non conformes';
+      case 'suspicious_activity':
+        return 'Activité suspecte';
+      case 'autre':
+        return 'Autre raison';
+      default:
+        return reason;
+    }
   };
 
   return (
@@ -142,7 +213,7 @@ useEffect(() => {
               <div>
                 <p className="text-sm text-gray-600">Montant total</p>
                 <p className="text-xl font-bold text-blue-600">
-                  {retraits.reduce((sum, d) => sum + (d.statut === 'pending' ? Number(d.montant) : 0), 0).toLocaleString()}
+                  {retraits.reduce((sum, d) => sum + (d.statut === 'confirmee' ? Number(d.montant) : 0), 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500">FCFA</p>
               </div>
@@ -159,8 +230,6 @@ useEffect(() => {
                   <button
                     title="Actualiser les fonds"
                     onClick={async () => {
-                      // Simule une requête API pour obtenir le nouveau montant
-                      // Remplace ce setTimeout par un appel API réel si besoin
                       const nouveauMontant = Math.floor(180000 + Math.random() * 20000);
                       setFondsSFDTotal(nouveauMontant);
                     }}
@@ -179,7 +248,6 @@ useEffect(() => {
 
         {/* Filtres et recherche */}
         <div className="flex flex-col md:flex-row gap-4 justify-between mb-10">
-          {/* Recherche */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <Input
@@ -190,17 +258,17 @@ useEffect(() => {
             />
           </div>
 
-          {/* Filtres */}
           <div className="flex gap-3">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as StatutRetrait | "all")}>
               <SelectTrigger className="w-40 bg-white/60">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
                 <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="en_attente">En attente</SelectItem>
-                <SelectItem value="approuve">Approuvées</SelectItem>
-                <SelectItem value="rejete">Rejetées</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="approved">Approuvées</SelectItem>
+                <SelectItem value="rejected">Rejetées</SelectItem>
+                <SelectItem value="confirmee">Confirmées</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -221,61 +289,81 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody>
-              {filteredDemandes.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={10} className="text-center text-gray-400 py-6">
+                  <td colSpan={7} className="text-center text-gray-400 py-6">
+                    <div className="flex items-center justify-center">
+                      <RefreshCw className="animate-spin mr-2" size={20} />
+                      Chargement...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredDemandes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-gray-400 py-6">
                     <ArrowDown className="mx-auto mb-2 text-gray-300" size={36} />
                     <div>Aucune demande de retrait trouvée</div>
                     <div className="text-xs text-gray-500">Essayez de modifier vos filtres de recherche</div>
                   </td>
                 </tr>
               ) : (
-                filteredDemandes.map((demande) => {
-                  const validationStatus = getValidationStatus(demande);
-                  return (
-                    <tr key={demande.id}
-                      className={cn("bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md")}
-                    >
-                      <td className="px-2 py-2 font-semibold text-gray-900 align-middle">{demande.client_nom} {demande.client_prenom}</td>
-                      <td className="px-2 py-2 text-gray-700 align-middle">{demande.telephone}</td>
-                      <td className="px-2 py-2 text-gray-700 align-middle">{demande.tontine_nom}</td>
-                      <td className="px-2 py-2 text-green-700 align-middle font-bold">{demande.montant.toLocaleString()} FCFA</td>
-                      <td className="px-2 py-2 text-center align-middle">{format(new Date(demande.date_demande_retrait), "dd/MM/yyyy HH:mm", { locale: fr })}</td>
-                      <td className="px-2 py-2 text-center align-middle">
-                        <span className={cn("px-3 py-1 text-nowrap rounded-full text-xs font-medium border", getStatusBadge(demande.statut))}>
-                          {demande.statut === 'pending' ? 'En attente' :
-                            demande.statut === 'approved' ? 'Approuvée' : demande.statut === 'confirmee' ? 'Confirmée' : 'Rejetée'}
-                        </span>
-                      </td>
-                      <td className="px-2 py-2 text-center align-middle">
-                        <div className="flex items-center gap-2 justify-center">
-                          <GlassButton size="sm" variant="outline" onClick={() => handleViewDetails(demande)}>
-                            <Eye size={16} className="mr-1" />
+                filteredDemandes.map((demande) => (
+                  <tr key={demande.id}
+                    className={cn("bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 transition-all hover:shadow-md")}
+                  >
+                    <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
+                      {demande.client_nom} {demande.client_prenom}
+                    </td>
+                    <td className="px-2 py-2 text-gray-700 align-middle">{demande.telephone}</td>
+                    <td className="px-2 py-2 text-gray-700 align-middle">{demande.tontine_nom}</td>
+                    <td className="px-2 py-2 text-green-700 align-middle font-bold">
+                      {Number(demande.montant).toLocaleString()} FCFA
+                    </td>
+                    <td className="px-2 py-2 text-gray-700 align-middle">
+                      {new Date(demande.date_demande_retrait).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-2 py-2 text-center align-middle">
+                      <span className={cn("px-3 py-1 text-nowrap rounded-full text-xs font-medium border", getStatusBadge(demande.statut))}>
+                        {getStatusLabel(demande.statut)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-center align-middle">
+                      <div className="flex items-center gap-2 justify-center">
+                        <GlassButton size="sm" variant="outline" onClick={() => handleViewDetails(demande)}>
+                          <Eye size={16} className="mr-1" />
+                        </GlassButton>
+                        {demande.statut === 'pending' && (
+                          <>
+                            <GlassButton
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleViewDetails(demande)}
+                            >
+                              <CheckCircle size={16} className="mr-1" />
+                            </GlassButton>
+                            <GlassButton
+                              size="sm"
+                              variant="outline"
+                              className="border-red-300 text-red-600 hover:bg-red-50"
+                              onClick={() => handleRejectClick(demande)}
+                            >
+                              <Ban size={16} className="mr-1" />
+                            </GlassButton>
+                          </>
+                        )}
+                        {demande.statut === 'approved' && (
+                          <GlassButton
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => handleVirementClick(demande)}
+                          >
+                            <Send size={16} className="mr-1" />
                           </GlassButton>
-                          {demande.statut === 'pending' && (
-                            <>
-                              <GlassButton
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => handleApproveRetrait(demande)}
-                              >
-                                <CheckCircle size={16} className="mr-1" />
-                              </GlassButton>
-                              <GlassButton
-                                size="sm"
-                                variant="outline"
-                                className="border-red-300 text-red-600 hover:bg-red-50"
-                                onClick={() => handleRejectClick(demande)}
-                              >
-                                <Ban size={16} className="mr-1" />
-                              </GlassButton>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -299,11 +387,11 @@ useEffect(() => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Client</label>
-                    <p className="text-gray-900">{selectedDemande.client}</p>
+                    <p className="text-gray-900">{selectedDemande.client_nom} {selectedDemande.client_prenom}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-green-600 mb-1">ID Client</label>
-                    <p className="text-gray-900">{selectedDemande.client}</p>
+                    <label className="block text-sm font-medium text-green-600 mb-1">ID Retrait</label>
+                    <p className="text-gray-900">{selectedDemande.id}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Téléphone</label>
@@ -311,53 +399,86 @@ useEffect(() => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Tontine</label>
-                    <p className="text-gray-900">{selectedDemande.tontine}</p>
+                    <p className="text-gray-900">{selectedDemande.tontine_nom}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-600 mb-1">Montant demandé</label>
-                    <p className="text-gray-900 font-bold">{selectedDemande.montant.toLocaleString()} FCFA</p>
+                    <p className="text-gray-900 font-bold">{Number(selectedDemande.montant).toLocaleString()} FCFA</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-green-600 mb-1">Numéro Mobile Money</label>
-                    <p className="text-gray-900">{selectedDemande.telephone}</p>
+                    <label className="block text-sm font-medium text-green-600 mb-1">Statut</label>
+                    <span className={cn("px-3 py-1 rounded-full text-xs font-medium border", getStatusBadge(selectedDemande.statut))}>
+                      {getStatusLabel(selectedDemande.statut)}
+                    </span>
                   </div>
                 </div>
-                {selectedDemande.statut == 'pending' && (() => {
+
+                {selectedDemande.commentaires_agent && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-green-600 mb-1">Commentaires Agent</label>
+                    <p className="text-gray-900">{selectedDemande.commentaires_agent}</p>
+                  </div>
+                )}
+
+                {selectedDemande.statut === 'pending' && (() => {
                   const validationStatus = getValidationStatus(selectedDemande);
                   return (
-                    <div className={cn("mt-1 px-2 py-2 rounded mb-10 text-xs flex items-center gap-1 justify-center", validationStatus.bgClass, validationStatus.textClass)}>
-                      {validationStatus.icon}
-                      <span>{validationStatus.message}</span>
+                    <div>
+                      <div className={cn("mt-1 px-2 py-2 rounded mb-4 text-xs flex items-center gap-1 justify-center", validationStatus.bgClass, validationStatus.textClass)}>
+                        {validationStatus.icon}
+                        <span>{validationStatus.message}</span>
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
+                        <textarea
+                          value={commentaire}
+                          onChange={(e) => setCommentaire(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-lg"
+                          rows={3}
+                          placeholder="Ajoutez un commentaire..."
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <GlassButton
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleApproveRetrait(selectedDemande)}
+                        >
+                          <Check size={16} className="mr-2" />
+                          Approuver le retrait
+                        </GlassButton>
+
+                        <GlassButton
+                          variant="outline"
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            setShowModal(false);
+                            handleRejectClick(selectedDemande);
+                          }}
+                        >
+                          <Ban size={16} className="mr-2" />
+                          Rejeter
+                        </GlassButton>
+                      </div>
                     </div>
                   );
                 })()}
 
-                {selectedDemande.statut == 'pending' && (
+                {selectedDemande.statut === 'approved' && (
                   <div className="flex gap-3">
-                  <GlassButton
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => {
-                      handleApproveRetrait(selectedDemande);
-                      setShowModal(false);
-                    }}
-                  >
-                    <Check size={16} className="mr-2" />
-                    Approuver le retrait
-                  </GlassButton>
-
-                  <GlassButton
-                    variant="outline"
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                    onClick={() => {
-                      setShowModal(false);
-                      handleRejectClick(selectedDemande);
-                    }}
-                  >
-                    <Ban size={16} className="mr-2" />
-                    Rejeter
-                  </GlassButton>
-                </div>
-              )}
+                    <GlassButton
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        setShowModal(false);
+                        handleVirementClick(selectedDemande);
+                      }}
+                    >
+                      <Send size={16} className="mr-2" />
+                      Initier le virement
+                    </GlassButton>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -365,7 +486,7 @@ useEffect(() => {
 
         {/* Modal rejet */}
         {showRejectModal && selectedDemande && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-md w-full">
               <div className="flex justify-between items-center p-6 border-b">
                 <h3 className="text-xl font-semibold">Rejeter la demande</h3>
@@ -379,8 +500,8 @@ useEffect(() => {
 
               <div className="p-6">
                 <p className="text-gray-700 mb-4">
-                  Vous êtes sur le point de rejeter la demande de retrait de <strong>{selectedDemande.client}</strong>
-                  pour un montant de <strong>{selectedDemande.montant.toLocaleString()} FCFA</strong>.
+                  Vous êtes sur le point de rejeter la demande de retrait de <strong>{selectedDemande.client_nom}</strong>
+                  pour un montant de <strong>{Number(selectedDemande.montant).toLocaleString()} FCFA</strong>.
                 </p>
 
                 <div className="mb-4">
@@ -397,6 +518,7 @@ useEffect(() => {
                     <option value="autre">Autre raison</option>
                   </select>
                 </div>
+
                 <div className="flex gap-3">
                   <GlassButton
                     className="bg-red-600 hover:bg-red-700"
@@ -409,6 +531,59 @@ useEffect(() => {
                   <GlassButton
                     variant="outline"
                     onClick={() => setShowRejectModal(false)}
+                  >
+                    Annuler
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal virement */}
+        {showVirementModal && selectedDemande && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-semibold">Initier le virement</h3>
+                <button
+                  onClick={() => setShowVirementModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <p className="text-gray-700 mb-4">
+                  Vous allez initier un virement de <strong>{Number(selectedDemande.montant).toLocaleString()} FCFA</strong> 
+                  pour <strong>{selectedDemande.client_nom}</strong>.
+                </p>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Numéro de téléphone</label>
+                  <input
+                    type="tel"
+                    value={telephone}
+                    onChange={(e) => setTelephone(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                    placeholder="Numéro de téléphone"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <GlassButton
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleInitierVirement(selectedDemande)}
+                    disabled={!telephone}
+                  >
+                    <Send size={16} className="mr-2" />
+                    Initier le virement
+                  </GlassButton>
+
+                  <GlassButton
+                    variant="outline"
+                    onClick={() => setShowVirementModal(false)}
                   >
                     Annuler
                   </GlassButton>

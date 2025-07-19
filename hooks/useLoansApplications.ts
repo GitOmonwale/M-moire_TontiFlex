@@ -305,7 +305,6 @@ export function useLoansApplications(): useLoansApplicationsResults {
         }
         throw new Error(errorMessage);
       }
-
       const result = await response.json();
       
       // Mettre à jour la demande dans la liste

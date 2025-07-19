@@ -16,6 +16,8 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { toast } from 'sonner';
 import { useClientsAPI } from '@/hooks/useClients';
+import { useRetraits } from '@/hooks/useWithdrawals';
+import { CreateRetraitData } from '@/types/retraits';
 
 const TontineDetailsPage = () => {
     const params = useParams();
@@ -23,12 +25,12 @@ const TontineDetailsPage = () => {
     const participantId = params.id as string;
 
     const { participantDetails, loading, error, fetchParticipantDetailsComplets, createCotisationForPayment, confirmPayment } = useParticipants();
-
+    const { createRetrait } = useRetraits();
     const { loading: carnetLoading } = useCarnetsCotisation();
     const { myTransactionHistory, loading: loadingTransactions, fetchMyTransactionHistory } = useClientsAPI();
     const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
     const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
-
+const [processing, setProcessing] = useState(false);
     useEffect(() => {
         if (participantId) {
             fetchParticipantDetailsComplets(participantId);
@@ -148,9 +150,55 @@ const TontineDetailsPage = () => {
         );
     }
 
-    function effectuerRetrait(retraitData: any): Promise<void> {
-        throw new Error('Function not implemented.');
-    }
+ const handleWithdraw = async (withdrawData: CreateRetraitData) => {
+     try {
+       setProcessing(true);
+       console.log('Processing withdrawal:', withdrawData);
+       // Validation des données avant envoi
+     if (!withdrawData.montant || parseFloat(withdrawData.montant) <= 0) {
+       throw new Error('Le montant doit être supérieur à 0');
+     }
+ 
+     if (parseFloat(withdrawData.montant) > (Number(participantDetails?.solde_disponible) || 0)) {
+       throw new Error('Solde insuffisant');
+     }
+     const retraitData = {
+       participant: participantId,
+       montant: withdrawData.montant.toString(),
+     };
+       // Appeler l'API pour effectuer le retrait
+       const result = await createRetrait(retraitData);
+ 
+       // 🎉 TOAST DE SUCCÈS POUR RETRAIT
+       toast.success('🔄 Demande de retrait soumise !', {
+         description: `${withdrawData.montant.toLocaleString()} FCFA. En attente de validation.`,
+         duration: 5000,
+       });
+ 
+       setIsWithdrawalModalOpen(false);
+ 
+       // Rafraîchir les données du compte
+       await fetchParticipantDetailsComplets(participantId);
+       
+     } catch (error) {
+       console.error('Error processing withdrawal:', error);
+     
+       // Toast d'erreur avec message spécifique
+       if (error instanceof Error) {
+         toast.error('❌ Erreur lors du retrait', {
+           description: error.message,
+           duration: 6000,
+         });
+       } else {
+         toast.error('❌ Erreur lors du retrait', {
+           description: 'Une erreur inattendue s\'est produite. Veuillez réessayer.',
+           duration: 6000,
+         });
+       }
+     } finally {
+       setProcessing(false);
+     }
+   };
     const filteredTransactions = myTransactionHistory.filter(
         (transaction) => transaction.type === 'cotisation_tontine' || transaction.type === 'retrait_tontine'
     );
@@ -504,7 +552,7 @@ const TontineDetailsPage = () => {
                                 onClose={() => setIsWithdrawalModalOpen(false)}
                                 details={participantDetails}
                                 loading={loading}
-                                onSubmit={effectuerRetrait}
+                                onSubmit={handleWithdraw}
                             />
                         </div>
                     </div>

@@ -39,7 +39,7 @@ export interface SavingsAccount {
   id: string;
   client_nom: string;
   agent_nom: string;
-  transactions_recentes: TransactionRecente[];
+  transactions: TransactionRecente[];
   piece_identite: string;
   photo_identite: string;
   numero_telephone_paiement: string;

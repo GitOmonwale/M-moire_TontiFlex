@@ -136,7 +136,7 @@ const LoanRequestDetailPage = () => {
     };
 
     loadLoanRequest();
-  }, [requestId, fetchApplicationById]);
+  }, []);
 
   const handleSupervisorDecision = async () => {
     if (!supervisorDecision || !loanRequest) {
@@ -434,7 +434,7 @@ const LoanRequestDetailPage = () => {
             {/* Informations principales */}
             <div className="lg:col-span-2 space-y-6">
               {/* Informations client */}
-              <GlassCard className="p-6">
+              <GlassCard className="p-6" hover={false}>
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <User className="mr-2 text-emerald-600" size={20} />
                   Informations Client
@@ -480,7 +480,7 @@ const LoanRequestDetailPage = () => {
               </GlassCard>
 
               {/* Détails de la demande */}
-              <GlassCard className="p-6">
+              <GlassCard className="p-6" hover={false}>
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <DollarSign className="mr-2 text-emerald-600" size={20} />
                   Détails de la Demande
@@ -516,7 +516,7 @@ const LoanRequestDetailPage = () => {
               </GlassCard>
 
               {/* Situation financière */}
-              <GlassCard className="p-6">
+              <GlassCard className="p-6" hover={false}>
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <TrendingUp className="mr-2 text-emerald-600" size={20} />
                   Situation Financière
@@ -555,7 +555,7 @@ const LoanRequestDetailPage = () => {
             <div className="space-y-6">
               {/* Score de fiabilité */}
               {loanRequest.score_fiabilite && (
-                <GlassCard className="p-6">
+                <GlassCard className="p-6" hover={false}>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <Target className="mr-2 text-emerald-600" size={20} />
                     Score de Fiabilité
@@ -570,7 +570,7 @@ const LoanRequestDetailPage = () => {
               )}
 
               {/* Documents */}
-              <GlassCard className="p-6">
+              <GlassCard className="p-6" hover={false}>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <FileText className="mr-2 text-emerald-600" size={20} />
                   Documents
@@ -749,7 +749,7 @@ const LoanRequestDetailPage = () => {
 
         {activeTab === 'scoring' && (
           <div className="max-w-4xl mx-auto space-y-6">
-            <GlassCard className="p-8">
+            <GlassCard className="p-8" hover={false}>
               <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
                 <BarChart3 className="mr-3 text-emerald-600" size={24} />
                 Évaluation et Scoring
@@ -793,7 +793,7 @@ const LoanRequestDetailPage = () => {
 
             {/* Section complétion de rapport */}
             {isSupervisorDecision && (
-              <GlassCard className="p-8">
+              <GlassCard className="p-8" hover={false}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                   <MessageSquare className="mr-3 text-emerald-600" size={20} />
                   Compléter le Rapport d'Analyse
@@ -848,7 +848,7 @@ const LoanRequestDetailPage = () => {
 
         {activeTab === 'edit' && canEdit && (
           <div className="max-w-4xl mx-auto">
-            <GlassCard className="p-8">
+            <GlassCard className="p-8" hover={false}>
               <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
                 <Edit className="mr-3 text-emerald-600" size={24} />
                 Modifier la Demande

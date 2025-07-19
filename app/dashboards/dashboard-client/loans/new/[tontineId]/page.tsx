@@ -15,6 +15,7 @@ import { useLoansApplications } from "@/hooks/useLoansApplications";
 import { CreateLoanApplicationData } from "@/types/loans-applications";
 
 interface FormData {
+    compte_epargne: string;
     // Informations personnelles
     date_naissance: string;
     adresse_domicile: string;
@@ -53,6 +54,7 @@ const LoanApplication = () => {
     const totalSteps = 5;
 
     const [formData, setFormData] = useState<FormData>({
+        compte_epargne: tontineId as string,
         // Informations personnelles
         date_naissance: '',
         adresse_domicile: '',
@@ -162,6 +164,7 @@ const LoanApplication = () => {
 
         try {
             const applicationData: CreateLoanApplicationData = {
+                compte_epargne: tontineId as string,
                 date_naissance: formData.date_naissance,
                 adresse_domicile: formData.adresse_domicile,
                 adresse_bureau: formData.adresse_bureau || undefined,

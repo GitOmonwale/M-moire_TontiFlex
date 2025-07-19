@@ -258,10 +258,10 @@ const LoanTrackingPage = () => {
               <div>
                 <p className="text-sm text-gray-600">Encours total</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  {(totalOutstanding / 1000000).toFixed(1)}M FCFA
+                 {filteredLoans.reduce((sum, loan) => sum + Number(loan.solde_restant_du), 0).toFixed(2)} 
                 </p>
               </div>
-              <DollarSign className="text-emerald-600" size={24} />
+              FCFA
             </div>
           </GlassCard>
         </div>
@@ -425,10 +425,10 @@ const LoanTrackingPage = () => {
                         
                         {/* Badge statut */}
                         <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium text-nowrap border ${getStatusColor(loan.statut)}`}>
-                            {getStatusIcon(loan.statut)}
+                          <div className={`px-3 py-1 flex items-center gap-1 rounded-full text-xs font-medium border ${getStatusColor(loan.statut)}`}>
+                           <span>{getStatusIcon(loan.statut)}</span>
                             <span className="ml-1">{getStatusLabel(loan.statut)}</span>
-                          </span>
+                          </div>
                           {Number(loan.est_en_retard) > 0 && (
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                               +{loan.est_en_retard}j

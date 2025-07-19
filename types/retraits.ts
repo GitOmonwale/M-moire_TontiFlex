@@ -6,49 +6,40 @@ export type StatutRetrait =
   | 'confirmee'; // Confirmé
 
 export interface Retrait {
-  id: string; // UUID, readOnly
-  client: string; // UUID
+  id: string; 
+  client: string; 
   client_nom: string;
   client_prenom: string;
-  tontine: string; // UUID
+  tontine: string; 
   tontine_nom: string;
-  participant: string | null; // UUID, nullable
-  montant: string; // decimal, Montant demandé pour le retrait en FCFA
-  date_demande_retrait: string; // datetime, readOnly
-  date_validation_retrait: string | null; // datetime, nullable
+  participant: string | null; 
+  montant: string; 
+  date_demande_retrait: string; 
+  date_validation_retrait: string | null; 
   statut: StatutRetrait;
-  agent_validateur: string | null; // UUID, nullable
+  agent_validateur: string | null; 
   commentaires_agent: string;
   raison_rejet: string;
-  transaction_kkiapay: string | null; // UUID, nullable
+  transaction_kkiapay: string | null; 
   telephone: string;
 }
 
 export interface CreateRetraitData {
-  client: string; // UUID
-  tontine: string; // UUID
-  participant?: string; // UUID, nullable
-  montant: string; // decimal
-  date_validation_retrait?: string; // datetime
-  statut?: StatutRetrait;
-  agent_validateur?: string; // UUID
-  commentaires_agent?: string;
-  raison_rejet?: string;
-  transaction_kkiapay?: string; // UUID
-  telephone?: string;
+  participant: string; 
+  montant: string; 
 }
 
 export interface UpdateRetraitData {
-  client?: string; // UUID
-  tontine?: string; // UUID
-  participant?: string; // UUID, nullable
-  montant?: string; // decimal
-  date_validation_retrait?: string; // datetime
+  client?: string; 
+  tontine?: string; 
+  participant?: string; 
+  montant?: string; 
+  date_validation_retrait?: string; 
   statut?: StatutRetrait;
-  agent_validateur?: string; // UUID
+  agent_validateur?: string; 
   commentaires_agent?: string;
   raison_rejet?: string;
-  transaction_kkiapay?: string; // UUID
+  transaction_kkiapay?: string; 
   telephone?: string;
 }
 
@@ -82,6 +73,6 @@ export interface PaginatedRetraitList {
 
 export interface RetraitFilters {
   page?: number;
-  participant?: string; // Filtrer par ID participant
-  statut?: StatutRetrait; // Filtrer par statut
+  participant?: string; 
+  statut?: StatutRetrait; 
 }
