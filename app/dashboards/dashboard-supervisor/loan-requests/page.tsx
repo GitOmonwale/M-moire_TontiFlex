@@ -34,7 +34,7 @@ const LoanRequestsPage = () => {
 
 const { applications, fetchApplications } = useLoansApplications();
 useEffect(() => {
-  fetchApplications();
+  fetchApplications({ statut: 'soumis' });
 }, []);
   const filteredRequests = applications
     .filter(request => {
@@ -293,9 +293,8 @@ useEffect(() => {
                           </div>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-600 mb-2">Historique épargne:</p>
+                          <p className="text-sm text-gray-600 mb-2">Historique épargne: - </p>
                           <div className="text-sm text-gray-700">
-                            <span>{request.historique_prets_anterieurs} mois • </span>
                             <span>Score régularité: {request.ratio_endettement}/100</span>
                           </div>
                         </div>

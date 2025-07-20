@@ -45,8 +45,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
-import { useLoansApplications, CompleterRapportData } from '@/hooks/useLoansApplications';
-import { LoanApplication, SupervisorProcessData, AdminDecisionData, UpdateLoanApplicationData } from '@/types/loans-applications';
+import { useLoansApplications } from '@/hooks/useLoansApplications';
+import { LoanApplication, SupervisorProcessData, AdminDecisionData, UpdateLoanApplicationData, CompleterRapportData } from '@/types/loans-applications';
 
 const LoanRequestDetailPage = () => {
   const params = useParams(); 
@@ -57,8 +57,6 @@ const LoanRequestDetailPage = () => {
     fetchApplicationById, 
     processApplication, 
     adminDecision,
-    fetchRapportAnalyse,
-    completerRapport,
     updateApplicationPartial
   } = useLoansApplications();
   const router = useRouter();
@@ -68,10 +66,15 @@ const LoanRequestDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'scoring' | 'decision' | 'edit'>('overview');
   
-  // États pour la décision superviseur
-  const [supervisorDecision, setSupervisorDecision] = useState<'examiner' | 'rejeter' | null>(null);
+  // 🔄 États mis à jour pour la nouvelle API
+  const [supervisorAction, setSupervisorAction] = useState<'approuver' | 'rejeter' | null>(null);
   const [supervisorComments, setSupervisorComments] = useState("");
-  const [rejectReason, setRejectReason] = useState("");
+  
+  // Champs requis pour l'approbation
+  const [montantAccorde, setMontantAccorde] = useState("");
+  const [tauxInteret, setTauxInteret] = useState("");
+  const [dureeMois, setDureeMois] = useState("");
+  const [rapportSuperviseurDecision, setRapportSuperviseurDecision] = useState("");
   
   // États pour la décision admin
   const [adminDecisionType, setAdminDecisionType] = useState<'accorder' | 'rejeter' | null>(null);
@@ -139,40 +142,59 @@ const LoanRequestDetailPage = () => {
   }, []);
 
   const handleSupervisorDecision = async () => {
-    if (!supervisorDecision || !loanRequest) {
-      toast.error("Veuillez sélectionner une décision");
+    if (!supervisorAction || !loanRequest) {
+      toast.error("Veuillez sélectionner une action");
       return;
     }
 
-    if (supervisorDecision === 'rejeter' && !rejectReason) {
-      toast.error("Veuillez indiquer la raison du rejet");
+    // Validation pour le rejet
+    if (supervisorAction === 'rejeter' && !supervisorComments.trim()) {
+      toast.error("Le commentaire est obligatoire pour un rejet");
       return;
+    }
+
+    // Validation pour l'approbation
+    if (supervisorAction === 'approuver') {
+      if (!montantAccorde || !tauxInteret || !dureeMois || !rapportSuperviseurDecision.trim()) {
+        toast.error("Tous les champs sont obligatoires pour une approbation");
+        return;
+      }
     }
 
     setIsSubmitting(true);
     
     try {
       const processData: SupervisorProcessData = {
-        decision: supervisorDecision,
-        commentaires: supervisorComments,
-        ...(supervisorDecision === 'rejeter' && { raison_rejet: rejectReason })
+        action: supervisorAction,
+        ...(supervisorAction === 'approuver' && {
+          montant_accorde: parseFloat(montantAccorde),
+          taux_interet: parseFloat(tauxInteret),
+          duree_mois: parseInt(dureeMois),
+          rapport_superviseur: rapportSuperviseurDecision,
+          ...(supervisorComments.trim() && { commentaire: supervisorComments })
+        }),
+        ...(supervisorAction === 'rejeter' && {
+          commentaire: supervisorComments
+        })
       };
 
       const result = await processApplication(loanRequest.id, processData);
       
       if (result.success) {
         setLoanRequest(result.demande);
-        toast.success(result.message);
+        toast.success("Demande traitée avec succès");
         
         // Rediriger après succès
         setTimeout(() => router.push('/dashboards/dashboard-supervisor/loan-requests'), 1500);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du traitement:', error);
+      toast.error(error.message || 'Erreur lors du traitement');
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleAdminDecision = async () => {
     if (!adminDecisionType || !loanRequest) {
@@ -204,7 +226,7 @@ const LoanRequestDetailPage = () => {
       
       if (result.success) {
         setLoanRequest(result.demande);
-        toast.success(result.message);
+        toast.success("Demande traitée avec succès");
         
         // Rediriger après succès
         setTimeout(() => router.push('/dashboards/dashboard-admin/loan-requests'), 1500);
@@ -213,30 +235,6 @@ const LoanRequestDetailPage = () => {
       console.error('Erreur lors de la décision:', error);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleCompleteRapport = async () => {
-    if (!rapportSuperviseur.trim() || !loanRequest) {
-      toast.error("Veuillez saisir un rapport");
-      return;
-    }
-
-    setIsCompletingRapport(true);
-    
-    try {
-      const rapportData: CompleterRapportData = {
-        rapport_superviseur: rapportSuperviseur
-      };
-
-      const updatedApplication = await completerRapport(loanRequest.id, rapportData);
-      setLoanRequest(updatedApplication);
-      setRapportSuperviseur("");
-      toast.success("Rapport complété avec succès");
-    } catch (error) {
-      console.error('Erreur lors de la complétion du rapport:', error);
-    } finally {
-      setIsCompletingRapport(false);
     }
   };
 
@@ -790,59 +788,6 @@ const LoanRequestDetailPage = () => {
                 </div>
               </div>
             </GlassCard>
-
-            {/* Section complétion de rapport */}
-            {isSupervisorDecision && (
-              <GlassCard className="p-8" hover={false}>
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <MessageSquare className="mr-3 text-emerald-600" size={20} />
-                  Compléter le Rapport d'Analyse
-                </h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="rapportSuperviseur">Rapport du superviseur *</Label>
-                    <Textarea
-                      id="rapportSuperviseur"
-                      placeholder="Rédigez votre analyse détaillée de la demande..."
-                      value={rapportSuperviseur}
-                      onChange={(e) => setRapportSuperviseur(e.target.value)}
-                      className="mt-1"
-                      rows={6}
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Analysez la solvabilité, les risques, et donnez votre recommandation
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center justify-end gap-3">
-                    <GlassButton
-                      variant="outline"
-                      onClick={() => setRapportSuperviseur("")}
-                    >
-                      Effacer
-                    </GlassButton>
-                    <GlassButton
-                      onClick={handleCompleteRapport}
-                      disabled={!rapportSuperviseur.trim() || isCompletingRapport}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      {isCompletingRapport ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Enregistrement...
-                        </>
-                      ) : (
-                        <>
-                          <FileEdit className="mr-2" size={16} />
-                          Compléter le rapport
-                        </>
-                      )}
-                    </GlassButton>
-                  </div>
-                </div>
-              </GlassCard>
-            )}
           </div>
         )}
 
@@ -860,7 +805,7 @@ const LoanRequestDetailPage = () => {
                   <h4 className="font-semibold text-gray-900 mb-4">Informations financières</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="montant_souhaite">Montant demandé (FCFA)</Label>
+                      <Label htmlFor="montant_souhaite" className="mb-2">Montant demandé (FCFA)</Label>
                       <Input
                         id="montant_souhaite"
                         type="number"
@@ -870,7 +815,7 @@ const LoanRequestDetailPage = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="duree_pret">Durée (mois)</Label>
+                      <Label htmlFor="duree_pret" className="mb-2">Durée (mois)</Label>
                       <Input
                         id="duree_pret"
                         type="number"
@@ -880,7 +825,7 @@ const LoanRequestDetailPage = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="revenu_mensuel">Revenus mensuels (FCFA)</Label>
+                      <Label htmlFor="revenu_mensuel" className="mb-2">Revenus mensuels (FCFA)</Label>
                       <Input
                         id="revenu_mensuel"
                         type="number"
@@ -890,7 +835,7 @@ const LoanRequestDetailPage = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="charges_mensuelles">Charges mensuelles (FCFA)</Label>
+                      <Label htmlFor="charges_mensuelles" className="mb-2">Charges mensuelles (FCFA)</Label>
                       <Input
                         id="charges_mensuelles"
                         type="number"
@@ -907,7 +852,7 @@ const LoanRequestDetailPage = () => {
                   <h4 className="font-semibold text-gray-900 mb-4">Détails du prêt</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="type_pret">Type de prêt</Label>
+                      <Label htmlFor="type_pret" className="mb-2">Type de prêt</Label>
                       <Select 
                         value={editForm.type_pret || ''} 
                         onValueChange={(value) => setEditForm({...editForm, type_pret: value as any})}
@@ -924,7 +869,7 @@ const LoanRequestDetailPage = () => {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="type_garantie">Type de garantie</Label>
+                      <Label htmlFor="type_garantie" className="mb-2">Type de garantie</Label>
                       <Select 
                         value={editForm.type_garantie || ''} 
                         onValueChange={(value) => setEditForm({...editForm, type_garantie: value as any})}
@@ -943,7 +888,7 @@ const LoanRequestDetailPage = () => {
                   </div>
                   
                   <div className="mt-4">
-                    <Label htmlFor="objet_pret">Objet du prêt</Label>
+                    <Label htmlFor="objet_pret" className="mb-2">Objet du prêt</Label>
                     <Textarea
                       id="objet_pret"
                       value={editForm.objet_pret || ''}
@@ -954,7 +899,7 @@ const LoanRequestDetailPage = () => {
                   </div>
                   
                   <div className="mt-4">
-                    <Label htmlFor="details_garantie">Détails de la garantie</Label>
+                    <Label htmlFor="details_garantie" className="mb-2">Détails de la garantie</Label>
                     <Textarea
                       id="details_garantie"
                       value={editForm.details_garantie || ''}
@@ -970,7 +915,7 @@ const LoanRequestDetailPage = () => {
                   <h4 className="font-semibold text-gray-900 mb-4">Adresses</h4>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="adresse_domicile">Adresse domicile</Label>
+                      <Label htmlFor="adresse_domicile" className="mb-2">Adresse domicile</Label>
                       <Textarea
                         id="adresse_domicile"
                         value={editForm.adresse_domicile || ''}
@@ -980,7 +925,7 @@ const LoanRequestDetailPage = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="adresse_bureau">Adresse bureau</Label>
+                      <Label htmlFor="adresse_bureau" className="mb-2">Adresse bureau</Label>
                       <Textarea
                         id="adresse_bureau"
                         value={editForm.adresse_bureau || ''}
@@ -996,7 +941,7 @@ const LoanRequestDetailPage = () => {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-4">Situation professionnelle</h4>
                   <div>
-                    <Label htmlFor="situation_professionnelle">Profession</Label>
+                    <Label htmlFor="situation_professionnelle" className="mb-2">Profession</Label>
                     <Input
                       id="situation_professionnelle"
                       value={editForm.situation_professionnelle || ''}
@@ -1036,225 +981,198 @@ const LoanRequestDetailPage = () => {
             </GlassCard>
           </div>
         )}
+{activeTab === 'decision' && (
+          <div className="space-y-6">
+            <GlassCard hover={false}>
+              <div className="p-4">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                  Traitement de la demande
+                </h3>
 
-        {activeTab === 'decision' && canMakeDecision && (
-          <div className="max-w-4xl mx-auto">
-            <GlassCard className="p-8" hover={false}>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <CheckCircle className="mr-3 text-emerald-600" size={24} />
-                {isSupervisorDecision ? 'Décision Superviseur' : 'Décision Administrateur'}
-              </h3>
-
-              {isSupervisorDecision && (
-                <>
-                  {/* Sélection de la décision superviseur */}
-                  <div className="mb-8">
-                    <Label className="text-base font-medium text-gray-900 mb-4 block">
-                      Quelle est votre décision ?
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-6">
+                  {/* Sélection de l'action */}
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">Action à effectuer</Label>
+                    <div className="grid grid-cols-2 gap-4">
                       <button
-                        onClick={() => setSupervisorDecision('examiner')}
+                        onClick={() => setSupervisorAction('approuver')}
                         className={cn(
-                          "p-4 rounded-xl border-2 transition-all",
-                          supervisorDecision === 'examiner' 
-                            ? "border-green-500 bg-green-50" 
-                            : "border-gray-200 hover:border-green-300"
+                          "p-4 rounded-lg border-2 transition-all text-left",
+                          supervisorAction === 'approuver'
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200 hover:border-gray-300"
                         )}
                       >
-                        <CheckCircle className="text-green-600 mx-auto mb-2" size={24} />
-                        <p className="font-medium text-green-700">Examiner et transférer</p>
-                        <p className="text-sm text-gray-600">Transférer vers l'administrateur</p>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className={cn(
+                            "h-5 w-5",
+                            supervisorAction === 'approuver' ? "text-green-600" : "text-gray-400"
+                          )} />
+                          <div>
+                            <h4 className="font-medium">Approuver</h4>
+                            <p className="text-sm text-gray-600">Approuver la demande de prêt</p>
+                          </div>
+                        </div>
                       </button>
-                      
+
                       <button
-                        onClick={() => setSupervisorDecision('rejeter')}
+                        onClick={() => setSupervisorAction('rejeter')}
                         className={cn(
-                          "p-4 rounded-xl border-2 transition-all",
-                          supervisorDecision === 'rejeter' 
-                            ? "border-red-500 bg-red-50" 
-                            : "border-gray-200 hover:border-red-300"
+                          "p-4 rounded-lg border-2 transition-all text-left",
+                          supervisorAction === 'rejeter'
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-200 hover:border-gray-300"
                         )}
                       >
-                        <XCircle className="text-red-600 mx-auto mb-2" size={24} />
-                        <p className="font-medium text-red-700">Rejeter</p>
-                        <p className="text-sm text-gray-600">Refuser la demande</p>
+                        <div className="flex items-center gap-3">
+                          <XCircle className={cn(
+                            "h-5 w-5",
+                            supervisorAction === 'rejeter' ? "text-red-600" : "text-gray-400"
+                          )} />
+                          <div>
+                            <h4 className="font-medium">Rejeter</h4>
+                            <p className="text-sm text-gray-600">Rejeter la demande</p>
+                          </div>
+                        </div>
                       </button>
                     </div>
                   </div>
 
-                  {/* Raison du rejet superviseur */}
-                  {supervisorDecision === 'rejeter' && (
-                    <div className="mb-6">
-                      <Label htmlFor="rejectReason">Raison du rejet *</Label>
-                      <Textarea
-                        id="rejectReason"
-                        placeholder="Indiquez les raisons du rejet de cette demande..."
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        className="mt-1"
-                        rows={3}
-                      />
+                  {/* Champs pour l'approbation */}
+                  {supervisorAction === 'approuver' && (
+                    <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h4 className="font-medium text-green-800">Paramètres d'approbation</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="montant_accorde">Montant accordé (FCFA) *</Label>
+                          <Input
+                            id="montant_accorde"
+                            type="number"
+                            value={montantAccorde}
+                            onChange={(e) => setMontantAccorde(e.target.value)}
+                            placeholder="Ex: 500000"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="taux_interet">Taux d'intérêt (%) *</Label>
+                          <Input
+                            id="taux_interet"
+                            type="number"
+                            step="0.1"
+                            value={tauxInteret}
+                            onChange={(e) => setTauxInteret(e.target.value)}
+                            placeholder="Ex: 12.5"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="duree_mois">Durée (mois) *</Label>
+                          <Input
+                            id="duree_mois"
+                            type="number"
+                            value={dureeMois}
+                            onChange={(e) => setDureeMois(e.target.value)}
+                            placeholder="Ex: 24"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="rapport_superviseur_decision">Rapport du superviseur *</Label>
+                        <Textarea
+                          id="rapport_superviseur_decision"
+                          value={rapportSuperviseurDecision}
+                          onChange={(e) => setRapportSuperviseurDecision(e.target.value)}
+                          placeholder="Détaillez votre analyse et les conditions d'approbation..."
+                          rows={4}
+                          required
+                        />
+                         <p className="text-sm text-gray-500 mt-1">
+                      Analysez la solvabilité, les risques, et donnez votre recommandation
+                    </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="commentaire_approbation" className="mb-2">Commentaire (optionnel)</Label>
+                        <Textarea
+                          id="commentaire_approbation"
+                          value={supervisorComments}
+                          onChange={(e) => setSupervisorComments(e.target.value)}
+                          placeholder="Commentaires additionnels..."
+                          rows={2}
+                        />
+                      </div>
                     </div>
                   )}
 
-                  {/* Commentaires superviseur */}
-                  <div className="mb-6">
-                    <Label htmlFor="supervisorComments">Commentaires du superviseur</Label>
-                    <Textarea
-                      id="supervisorComments"
-                      placeholder="Observations, recommandations ou justifications..."
-                      value={supervisorComments}
-                      onChange={(e) => setSupervisorComments(e.target.value)}
-                      className="mt-1"
-                      rows={4}
-                    />
-                  </div>
+                  {/* Champ pour le rejet */}
+                  {supervisorAction === 'rejeter' && (
+                    <div className="space-y-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                      <h4 className="font-medium text-red-800">Motif du rejet</h4>
+                      
+                      <div>
+                        <Label htmlFor="commentaire_rejet" className="mb-2">Commentaire de rejet *</Label>
+                        <Textarea
+                          id="commentaire_rejet"
+                          value={supervisorComments}
+                          onChange={(e) => setSupervisorComments(e.target.value)}
+                          placeholder="Expliquez les raisons du rejet..."
+                          rows={4}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Actions superviseur */}
-                  <div className="flex items-center justify-end gap-4 pt-6 border-t">
+                  {/* Boutons d'action */}
+                  <div className="flex justify-end gap-3 pt-4">
                     <GlassButton
                       variant="outline"
-                      onClick={() => router.back()}
+                      onClick={() => {
+                        setSupervisorAction(null);
+                        setSupervisorComments("");
+                        setMontantAccorde(loanRequest.montant_souhaite);
+                        setTauxInteret("12");
+                        setDureeMois(loanRequest.duree_pret?.toString() || "12");
+                        setRapportSuperviseurDecision("");
+                      }}
                     >
                       Annuler
                     </GlassButton>
+                    
                     <GlassButton
                       onClick={handleSupervisorDecision}
-                      disabled={!supervisorDecision || isSubmitting}
-                      className={`${supervisorDecision === 'rejeter' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                      disabled={!supervisorAction || isSubmitting}
+                      className={cn(
+                        supervisorAction === 'approuver' ? "bg-green-600 hover:bg-green-700" :
+                        supervisorAction === 'rejeter' ? "bg-red-600 hover:bg-red-700" : ""
+                      )}
                     >
                       {isSubmitting ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                           Traitement...
                         </>
                       ) : (
                         <>
-                          <Send className="mr-2" size={16} />
-                          Confirmer la décision
+                          <Send size={16} />
+                          {supervisorAction === 'approuver' ? 'Approuver' : 'Rejeter'}
                         </>
                       )}
                     </GlassButton>
                   </div>
-                </>
-              )}
-
-              {isAdminDecision && (
-                <>
-                  {/* Sélection de la décision admin */}
-                  <div className="mb-8">
-                    <Label className="text-base font-medium text-gray-900 mb-4 block">
-                      Décision finale de l'administrateur
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <button
-                        onClick={() => setAdminDecisionType('accorder')}
-                        className={cn(
-                          "p-4 rounded-xl border-2 transition-all",
-                          adminDecisionType === 'accorder' 
-                            ? "border-green-500 bg-green-50" 
-                            : "border-gray-200 hover:border-green-300"
-                        )}
-                      >
-                        <CheckCircle className="text-green-600 mx-auto mb-2" size={24} />
-                        <p className="font-medium text-green-700">Accorder le prêt</p>
-                        <p className="text-sm text-gray-600">Valider et décaisser</p>
-                      </button>
-                      
-                      <button
-                        onClick={() => setAdminDecisionType('rejeter')}
-                        className={cn(
-                          "p-4 rounded-xl border-2 transition-all",
-                          adminDecisionType === 'rejeter' 
-                            ? "border-red-500 bg-red-50" 
-                            : "border-gray-200 hover:border-red-300"
-                        )}
-                      >
-                        <XCircle className="text-red-600 mx-auto mb-2" size={24} />
-                        <p className="font-medium text-red-700">Rejeter</p>
-                        <p className="text-sm text-gray-600">Refuser définitivement</p>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Montant accordé */}
-                  {adminDecisionType === 'accorder' && (
-                    <div className="mb-6">
-                      <Label htmlFor="approvedAmount">Montant accordé (FCFA) *</Label>
-                      <Input
-                        id="approvedAmount"
-                        type="number"
-                        value={approvedAmount}
-                        onChange={(e) => setApprovedAmount(e.target.value)}
-                        className="mt-1"
-                        placeholder="Montant à accorder"
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Montant demandé: {parseInt(loanRequest.montant_souhaite).toLocaleString()} FCFA
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Raison du rejet admin */}
-                  {adminDecisionType === 'rejeter' && (
-                    <div className="mb-6">
-                      <Label htmlFor="adminRejectReason">Raison du rejet *</Label>
-                      <Textarea
-                        id="adminRejectReason"
-                        placeholder="Motifs du rejet définitif..."
-                        value={adminRejectReason}
-                        onChange={(e) => setAdminRejectReason(e.target.value)}
-                        className="mt-1"
-                        rows={3}
-                      />
-                    </div>
-                  )}
-
-                  {/* Commentaires admin */}
-                  <div className="mb-6">
-                    <Label htmlFor="adminComments">Commentaires de l'administrateur</Label>
-                    <Textarea
-                      id="adminComments"
-                      placeholder="Observations ou conditions particulières..."
-                      value={adminComments}
-                      onChange={(e) => setAdminComments(e.target.value)}
-                      className="mt-1"
-                      rows={4}
-                    />
-                  </div>
-
-                  {/* Actions admin */}
-                  <div className="flex items-center justify-end gap-4 pt-6 border-t">
-                    <GlassButton
-                      variant="outline"
-                      onClick={() => router.back()}
-                    >
-                      Annuler
-                    </GlassButton>
-                    <GlassButton
-                      onClick={handleAdminDecision}
-                      disabled={!adminDecisionType || isSubmitting}
-                      className={`${adminDecisionType === 'rejeter' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Traitement...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="mr-2" size={16} />
-                          Confirmer la décision
-                        </>
-                      )}
-                    </GlassButton>
-                  </div>
-                </>
-              )}
+                </div>
+              </div>
             </GlassCard>
           </div>
         )}
+
+         
       </div>
     </div>
   );

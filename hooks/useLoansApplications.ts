@@ -1,11 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LoanApplication, LoanApplicationFilters, PaginatedLoanApplicationList, CreateLoanApplicationData, UpdateLoanApplicationData, AdminDecisionData, SupervisorProcessData, LoanApplicationResponse, RapportDemande } from '../types/loans-applications';
-
-// 🆕 Interface pour compléter le rapport superviseur
-export interface CompleterRapportData {
-  rapport_superviseur: string; // minLength: 1
-}
+import { CompleterRapportData } from '../types/loans-applications';
 
 interface useLoansApplicationsResults {
   applications: LoanApplication[];
@@ -275,36 +271,48 @@ export function useLoansApplications(): useLoansApplicationsResults {
     }
   };
 
-  // Traiter une demande (Superviseur SFD)
+  // Traiter une demande (Superviseur SFD) - 🔄 Mis à jour pour JSON
   const processApplication = async (id: string, processData: SupervisorProcessData): Promise<LoanApplicationResponse> => {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      
-      Object.entries(processData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value.toString());
-        }
-      });
-
       const response = await fetch(`${baseUrl}/applications/${id}/process-application/`, {
         method: 'POST',
-        headers: getAuthHeaders(true),
-        body: formData,
+        headers: getAuthHeaders(), // JSON Content-Type
+        body: JSON.stringify(processData),
       });
 
       if (!response.ok) {
         let errorMessage = 'Erreur lors du traitement de la demande';
-        if (response.status === 400) {
-          errorMessage = 'Erreur de validation ou demande non traitable';
-        } else if (response.status === 403) {
-          errorMessage = 'Permissions insuffisantes';
-        } else if (response.status === 404) {
-          errorMessage = 'Demande introuvable';
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (typeof errorData === 'object') {
+            // Gérer les erreurs de validation
+            const validationErrors = Object.entries(errorData)
+              .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+              .join('\n');
+            if (validationErrors) {
+              errorMessage = `Erreurs de validation :\n${validationErrors}`;
+            }
+          }
+        } catch (e) {
+          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+          // Garder les messages par défaut basés sur le status
+          if (response.status === 400) {
+            errorMessage = 'Erreur de validation ou demande non traitable';
+          } else if (response.status === 403) {
+            errorMessage = 'Permissions insuffisantes';
+          } else if (response.status === 404) {
+            errorMessage = 'Demande introuvable';
+          }
         }
+        
         throw new Error(errorMessage);
       }
+      
       const result = await response.json();
       
       // Mettre à jour la demande dans la liste

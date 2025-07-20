@@ -122,11 +122,15 @@ export interface LoanApplication {
   }
   
   export interface SupervisorProcessData {
-    commentaires?: string;
-    decision: 'examiner' | 'rejeter';
-    raison_rejet?: string;
+    action: "approuver" | "rejeter";
+    // Pour approuver
+    montant_accorde?: number;
+    taux_interet?: number;
+    duree_mois?: number;
+    rapport_superviseur?: string;
+    // Optionnel
+    commentaire?: string;
   }
-  
   export interface LoanApplicationResponse {
     success: boolean;
     message: string;
@@ -144,3 +148,10 @@ export interface LoanApplication {
     recommandations: any[];
     documents_analyses: any;
   }
+
+  
+  // 🆕 Interface pour compléter le rapport superviseur
+  export interface CompleterRapportData {
+    rapport_superviseur: string; // minLength: 1
+  }
+  
