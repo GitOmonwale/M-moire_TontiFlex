@@ -181,8 +181,7 @@ const ModernDashboard = () => {
           </div>
         </div>
         <div className='mt-8' >
-        <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="">
                 <MyTransactions />
                 </div>
 
@@ -193,7 +192,6 @@ const ModernDashboard = () => {
                         </GlassButton>
                     </Link>
                 </div>
-            </div>
         </div>
       </div>
     </div>

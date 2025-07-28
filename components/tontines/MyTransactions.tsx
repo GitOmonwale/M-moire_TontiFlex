@@ -24,7 +24,7 @@ const MyTransactions = () => {
         };
 
         loadTransactions();
-    }, []);  
+    }, []);
 
     return (
         <div className="p-6">
@@ -42,16 +42,15 @@ const MyTransactions = () => {
                         {myTransactionHistory.length === 0 ? (
                             <p className="text-gray-500 text-center">Aucune transaction à afficher.</p>
                         ) : (
-                            myTransactionHistory.slice(0, 5).map((transaction) => (
+                            myTransactionHistory.slice(0, 5).map((transaction, index) => (
                                 <div
-                                    key={transaction.id}
+                                    key={`${transaction.id}-${index}`}
                                     className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 hover:shadow-sm transition-all"
                                 >
                                     <div className="flex items-center gap-4">
                                         <div
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                                transaction.montant > 0 ? 'bg-green-100' : 'bg-red-100'
-                                            }`}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center ${transaction.montant > 0 ? 'bg-green-100' : 'bg-red-100'
+                                                }`}
                                         >
                                             {transaction.montant > 0 ? (
                                                 <ArrowUp className="text-green-600" size={20} />
@@ -67,33 +66,37 @@ const MyTransactions = () => {
                                                 {transaction.description}
                                             </p>
                                             <div className="text-sm text-gray-500">
-                                                {format(
-                                                    new Date(transaction.date_creation),
-                                                    'dd MMM yyyy à HH:mm',
-                                                    { locale: fr }
-                                                )}
+                                                <div className="text-sm text-gray-500">
+                                                {transaction.date_creation && !isNaN(new Date(transaction.date_creation).getTime()) ? (
+  format(
+    new Date(transaction.date_creation),
+    'dd MMM yyyy à HH:mm',
+    { locale: fr }
+  )
+) : (
+  'Date invalide'
+)}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <p
-                                            className={`font-bold text-lg ${
-                                                transaction.montant > 0
+                                            className={`font-bold text-lg ${transaction.montant > 0
                                                     ? 'text-green-600'
                                                     : 'text-red-600'
-                                            }`}
+                                                }`}
                                         >
                                             {transaction.montant > 0 ? '+' : ''}
                                             {transaction.montant.toLocaleString()} FCFA
                                         </p>
                                         <div
-                                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                                transaction.statut === 'success'
+                                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${transaction.statut === 'success'
                                                     ? 'bg-green-100 text-green-700'
                                                     : transaction.statut === 'pending'
-                                                    ? 'bg-yellow-100 text-yellow-700'
-                                                    : 'bg-red-100 text-red-700'
-                                            }`}
+                                                        ? 'bg-yellow-100 text-yellow-700'
+                                                        : 'bg-red-100 text-red-700'
+                                                }`}
                                         >
                                             {transaction.statut_libelle || transaction.statut}
                                         </div>

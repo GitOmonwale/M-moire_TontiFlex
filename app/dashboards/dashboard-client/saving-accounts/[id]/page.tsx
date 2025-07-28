@@ -47,6 +47,7 @@ import WithdrawalForm from '@/components/forms/WithdrawalForm';
 import DepositForm from '@/components/forms/DepositForm';
 import { useSavingsAccounts } from '@/hooks/useSavingAccounts';
 import { toast } from 'sonner';
+import WidrawalSavingsForm from '@/components/forms/WidrawalSavingsForm';
 
 interface Transaction {
   id: string;
@@ -197,7 +198,7 @@ const SavingsAccountDetails = () => {
       });
 
       // 🎉 TOAST DE SUCCÈS POUR RETRAIT
-      toast.success('💸 Retrait effectué avec succès !', {
+      toast.success('💸 Demande de retrait envoyé avec succès !', {
         description: `${withdrawData.montant.toLocaleString()} FCFA transféré vers ${withdrawData.numero_telephone}`,
         duration: 5000,
       });
@@ -690,7 +691,7 @@ const SavingsAccountDetails = () => {
             >
               ✕
             </button>
-            <WithdrawalForm
+            <WidrawalSavingsForm
               isOpen={isWithdrawalModalOpen}
               onClose={() => setIsWithdrawalModalOpen(false)}
               details={savingsAccount}
@@ -704,6 +705,7 @@ const SavingsAccountDetails = () => {
       {/* Modal de dépôt avec KKiaPay */}
       {isDepositModalOpen && (
         <DepositForm
+          id={id}
           isOpen={isDepositModalOpen}
           onClose={() => setIsDepositModalOpen(false)}
           details={savingsAccount}

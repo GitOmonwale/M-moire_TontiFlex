@@ -7,6 +7,7 @@ import { useKKiaPay } from '@/hooks/useKKiaPay';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface DepositFormProps {
+  id: string;
   isOpen: boolean;
   onClose: () => void;
   details: any;
@@ -17,6 +18,7 @@ interface DepositFormProps {
 }
 
 const DepositForm: React.FC<DepositFormProps> = ({
+  id,
   isOpen,
   onClose,
   details,
@@ -191,7 +193,10 @@ const DepositForm: React.FC<DepositFormProps> = ({
         sandbox: true,
         amount: parseFloat(depositData.montant),
         phone: depositData.numero_telephone,
-        description: `TontiFlex Épargne - Dépôt ${parseFloat(depositData.montant).toLocaleString()} FCFA`
+        description: `TontiFlex Épargne - Dépôt ${parseFloat(depositData.montant).toLocaleString()} FCFA`,
+        callback: `http://localhost:3000/dashboards/dashboard-client/saving-accounts/${id}`,
+        position: 'center' as const,
+        theme: '#2196f3'
       };
 
       console.log('💳 Ouverture du widget KKiaPay pour dépôt...', kkiapayConfig);
@@ -347,7 +352,7 @@ const DepositForm: React.FC<DepositFormProps> = ({
                   type="tel"
                   value={depositData.numero_telephone}
                   onChange={(e) => handlePhoneChange(e.target.value)}
-                  placeholder="+229xxxxxxxx"
+                  placeholder="xxxxxxxx"
                   className={`w-full px-4 py-3 border rounded-lg ${
                     errors.numero_telephone ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -359,7 +364,7 @@ const DepositForm: React.FC<DepositFormProps> = ({
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Pour test: utilisez +22997000000
+                  Pour test: utilisez 97000000
                 </p>
               </div>
 

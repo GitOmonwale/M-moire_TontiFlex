@@ -196,48 +196,6 @@ const LoanRequestDetailPage = () => {
   };
 
 
-  const handleAdminDecision = async () => {
-    if (!adminDecisionType || !loanRequest) {
-      toast.error("Veuillez sélectionner une décision");
-      return;
-    }
-
-    if (adminDecisionType === 'rejeter' && !adminRejectReason) {
-      toast.error("Veuillez indiquer la raison du rejet");
-      return;
-    }
-
-    if (adminDecisionType === 'accorder' && !approvedAmount) {
-      toast.error("Veuillez indiquer le montant accordé");
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    try {
-      const decisionData: AdminDecisionData = {
-        decision: adminDecisionType,
-        commentaires: adminComments,
-        ...(adminDecisionType === 'rejeter' && { raison_rejet: adminRejectReason }),
-        ...(adminDecisionType === 'accorder' && { montant_accorde: approvedAmount })
-      };
-
-      const result = await adminDecision(loanRequest.id, decisionData);
-      
-      if (result.success) {
-        setLoanRequest(result.demande);
-        toast.success("Demande traitée avec succès");
-        
-        // Rediriger après succès
-        setTimeout(() => router.push('/dashboards/dashboard-admin/loan-requests'), 1500);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la décision:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleUpdateApplication = async () => {
     if (!loanRequest || !editForm) {
       toast.error("Aucune donnée à modifier");
@@ -324,14 +282,14 @@ const LoanRequestDetailPage = () => {
     );
   }
 
-  if (error || !loanRequest) {
+  if (!loanRequest) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <GlassCard className="max-w-md w-full">
           <div className="text-center py-8">
             <AlertTriangle className="mx-auto mb-4 text-red-500" size={64} />
             <h2 className="text-2xl font-bold mb-2 text-gray-800">Demande introuvable</h2>
-            <p className="text-gray-600 mb-6">{error || "La demande de prêt demandée n'existe pas."}</p>
+            <p className="text-gray-600 mb-6">La demande de prêt demandée n'existe pas.</p>
             <GlassButton onClick={() => router.back()} size="lg">
               Retour aux demandes
             </GlassButton>
@@ -584,8 +542,7 @@ const LoanRequestDetailPage = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Documents complets</span>
                     <div className="flex items-center">
-                      <CheckCircle className="text-green-600 mr-2" size={16} />
-                      <span className="text-xs text-green-600">{loanRequest.document_complet}</span>
+                      <a href={loanRequest.document_complet} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">Télécharger PDF</a>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -648,12 +605,6 @@ const LoanRequestDetailPage = () => {
                       <p className="font-medium">{loanRequest.superviseur_examinateur}</p>
                     </div>
                   )}
-                  {loanRequest.admin_validateur && (
-                    <div className="text-sm">
-                      <span className="text-gray-600">Admin validateur:</span>
-                      <p className="font-medium">{loanRequest.admin_validateur}</p>
-                    </div>
-                  )}
                 </div>
               </GlassCard>
 
@@ -705,10 +656,9 @@ const LoanRequestDetailPage = () => {
                     </div>
                     <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                       <span className="text-sm font-medium">Dossier complet</span>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="text-green-600" size={16} />
-                        <span className="text-xs text-green-600">{loanRequest.document_complet}</span>
-                      </div>
+                      <div className="flex items-center">
+                      <a href={loanRequest.document_complet} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">Télécharger PDF</a>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -1045,7 +995,7 @@ const LoanRequestDetailPage = () => {
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <Label htmlFor="montant_accorde">Montant accordé (FCFA) *</Label>
+                          <Label htmlFor="montant_accorde" className="mb-2">Montant accordé (FCFA) *</Label>
                           <Input
                             id="montant_accorde"
                             type="number"
@@ -1057,7 +1007,7 @@ const LoanRequestDetailPage = () => {
                         </div>
 
                         <div>
-                          <Label htmlFor="taux_interet">Taux d'intérêt (%) *</Label>
+                          <Label htmlFor="taux_interet" className="mb-2">Taux d'intérêt (%) *</Label>
                           <Input
                             id="taux_interet"
                             type="number"
@@ -1070,7 +1020,7 @@ const LoanRequestDetailPage = () => {
                         </div>
 
                         <div>
-                          <Label htmlFor="duree_mois">Durée (mois) *</Label>
+                          <Label htmlFor="duree_mois" className="mb-2">Durée (mois) *</Label>
                           <Input
                             id="duree_mois"
                             type="number"

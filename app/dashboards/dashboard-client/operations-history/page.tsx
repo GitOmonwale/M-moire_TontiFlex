@@ -97,7 +97,17 @@ const Transactions= () => {
                                     <p className="font-medium text-gray-900">{transaction.type_libelle || 'Transaction'}</p>
                                     <p className="font-medium text-sm text-gray-500 mb-">{transaction.description}</p>
                                     <div className="flex items-center gap-2 text-sm text-gray-500">
-                                        <span>{format(new Date(transaction.date_creation), 'dd MMM yyyy à HH:mm', { locale: fr })}</span>
+                                        <span>
+                                            {transaction.date_creation && !isNaN(new Date(transaction.date_creation).getTime()) ? (
+                                                format(
+                                                    new Date(transaction.date_creation),
+                                                    'dd MMM yyyy à HH:mm',
+                                                    { locale: fr }
+                                                )
+                                            ) : (
+                                                'Date invalide'
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

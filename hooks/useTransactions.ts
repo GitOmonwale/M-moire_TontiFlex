@@ -350,7 +350,6 @@ export function useSavingsTransactions(): useSavingsTransactionsResults {
         prev.filter(request => request.id !== id)
       );
       setSavingsTransaction(updatedTransaction);
-      toast.success(validationData.decision === 'approve' ? 'Retrait approuvé avec succès' : 'Retrait refusé');
       return updatedTransaction;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';

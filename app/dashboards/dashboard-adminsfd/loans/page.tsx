@@ -5,13 +5,13 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Eye, 
-  Clock, 
-  DollarSign, 
-  User, 
+import {
+  CheckCircle,
+  XCircle,
+  Eye,
+  Clock,
+  DollarSign,
+  User,
   Calendar,
   AlertTriangle,
   FileText,
@@ -38,8 +38,10 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLoansApplications } from '@/hooks/useLoansApplications';
+import { useLoans } from '@/hooks/useLoans';
 import { LoanApplication, AdminDecisionData, RapportDemande } from '@/types/loans-applications';
 import { Input } from '@heroui/react';
+import RapportModal from '@/components/modals/RapportModal';
 
 const AdminLoansValidation = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,18 +53,23 @@ const AdminLoansValidation = () => {
   const [showRapportModal, setShowRapportModal] = useState(false);
   const [currentRapport, setCurrentRapport] = useState<RapportDemande | null>(null);
   const [loadingRapport, setLoadingRapport] = useState(false);
-  const [decisionType, setDecisionType] = useState<'accorder' | 'rejeter' | null>(null);
+  const [decisionType, setDecisionType] = useState<'valider' | 'rejeter' | null>(null);
   const [decisionComment, setDecisionComment] = useState('');
   const [rejectReason, setRejectReason] = useState('');
-
-  const { 
-    applications, 
-    loading, 
-    error, 
-    fetchApplications, 
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [accordedLoanId, setAccordedLoanId] = useState<string | null>(null);
+  const {
+    applications,
+    loading,
+    error,
+    fetchApplications,
     adminDecision,
-    fetchRapportAnalyse
+    fetchRapportAnalyse,
   } = useLoansApplications();
+
+  const {
+    decaissement
+  } = useLoans();
 
   // Charger les demandes transférées à l'admin au montage du composant
   useEffect(() => {
@@ -74,7 +81,7 @@ const AdminLoansValidation = () => {
         toast.error('Erreur lors du chargement des demandes');
       }
     };
-    
+
     loadApplications();
   }, []);
 
@@ -83,9 +90,10 @@ const AdminLoansValidation = () => {
     setSelectedLoan(application);
     setLoadingRapport(true);
     setShowRapportModal(true);
-    
+
     try {
       const rapport = await fetchRapportAnalyse(application.id);
+      console.log("rapport", rapport);
       setCurrentRapport(rapport);
     } catch (error) {
       console.error('Erreur lors du chargement du rapport:', error);
@@ -99,17 +107,17 @@ const AdminLoansValidation = () => {
   // Filtrer les demandes selon les critères
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         app.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         app.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      app.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.id.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesType = typeFilter === 'all' || app.type_pret === typeFilter;
-    
+
     const montant = parseFloat(app.montant_souhaite);
-    const matchesAmount = amountFilter === 'all' || 
+    const matchesAmount = amountFilter === 'all' ||
       (amountFilter === 'small' && montant <= 50000) ||
       (amountFilter === 'medium' && montant > 50000 && montant <= 150000) ||
       (amountFilter === 'large' && montant > 150000);
-    
+
     return matchesSearch && matchesType && matchesAmount;
   });
 
@@ -119,31 +127,50 @@ const AdminLoansValidation = () => {
 
     try {
       const decisionData: AdminDecisionData = {
-        decision: decisionType,
+        action: decisionType,
         commentaires: decisionComment || undefined,
-        raison_rejet: decisionType === 'rejeter' ? rejectReason : undefined
+        ...(decisionType === 'rejeter' && { raison_rejet: rejectReason }),
+        ...(decisionType === 'valider' && { montant_accorde: selectedLoan.montant_souhaite })
       };
-
+      console.log('selectedLoan.id', selectedLoan.id);
       const result = await adminDecision(selectedLoan.id, decisionData);
-      
-      const action = decisionType === 'accorder' ? 'accordé' : 'rejeté';
+ // 🚀 AFFICHAGE COMPLET DE LA RÉPONSE
+    console.log('✅ Réponse complète de adminDecision:', result);
+    console.log('📊 Structure de la réponse:', JSON.stringify(result, null, 2));
+    
+    if (result.pret) {
+      setAccordedLoanId(result.pret.id);
+      console.log('📄 Données du prêt:', result.pret.id);
+    }
+    
+      const action = decisionType === 'valider' ? 'accordé' : 'rejeté';
       toast.success(`Prêt ${selectedLoan.id} ${action} avec succès!`);
-      
+
       // Rafraîchir la liste
       await fetchApplications({ statut: 'transfere_admin' });
-      
+
       // Fermer les modals
       setShowDecisionModal(false);
       setShowDetails(false);
       setDecisionComment('');
       setRejectReason('');
-      
+
     } catch (error) {
       toast.error('Erreur lors de la validation');
       console.error('Erreur décision admin:', error);
     }
   };
-
+  const handleDecaissement = async () => {
+    setButtonLoading(true);
+    try {
+      await decaissement(accordedLoanId!);
+      toast.success('Prêt décaissé avec succès');
+    } catch (e) {
+      toast.error('Erreur lors du décaissement : ' + (e instanceof Error ? e.message : ''));
+    } finally {
+      setButtonLoading(false);
+    }
+  };
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'transfere_admin':
@@ -181,235 +208,7 @@ const AdminLoansValidation = () => {
     return numAmount.toLocaleString('fr-FR') + ' FCFA';
   };
 
-  // Composant pour afficher le rapport détaillé
-  const RapportModal = () => {
-    if (!showRapportModal || !selectedLoan) return null;
 
-    return (
-      <div className="fixed inset-0 backdrop-blur-sm bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-6xl max-h-[90vh] overflow-auto w-full">
-          <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center gap-3">
-              <FileCheck className="text-blue-600" size={24} />
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Rapport d'Analyse Détaillé
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Demande {selectedLoan.id} - {selectedLoan.prenom} {selectedLoan.nom}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setShowRapportModal(false);
-                setCurrentRapport(null);
-              }}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <XCircle size={20} />
-            </button>
-          </div>
-          
-          {loadingRapport ? (
-            <div className="p-12 text-center">
-              <Clock className="mx-auto mb-4 text-blue-500 animate-spin" size={48} />
-              <p className="text-gray-600">Génération du rapport en cours...</p>
-            </div>
-          ) : currentRapport ? (
-            <div className="p-6 space-y-6">
-              
-              {/* Informations générales de la demande */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-blue-700">
-                    <User size={16} />
-                    Informations Demandeur
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>Nom complet:</strong> {currentRapport.demande.prenom} {currentRapport.demande.nom}</div>
-                    <div><strong>Téléphone:</strong> {currentRapport.demande.telephone}</div>
-                    <div><strong>Email:</strong> {currentRapport.demande.email}</div>
-                    <div><strong>Profession:</strong> {currentRapport.demande.situation_professionnelle}</div>
-                  </div>
-                </GlassCard>
-
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-green-700">
-                    <DollarSign size={16} />
-                    Détails Financiers
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>Montant demandé:</strong> {formatCurrency(currentRapport.demande.montant_souhaite)}</div>
-                    <div><strong>Durée:</strong> {currentRapport.demande.duree_pret} mois</div>
-                    <div><strong>Revenus:</strong> {formatCurrency(currentRapport.demande.revenu_mensuel)}/mois</div>
-                    <div><strong>Ratio endettement:</strong> 
-                      <span className={`ml-2 font-semibold ${parseFloat(currentRapport.demande.ratio_endettement) > 40 ? 'text-red-600' : 'text-green-600'}`}>
-                        {currentRapport.demande.ratio_endettement}%
-                      </span>
-                    </div>
-                  </div>
-                </GlassCard>
-
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-purple-700">
-                    <Award size={16} />
-                    Score de Fiabilité
-                  </h4>
-                  <div className="text-center">
-                    <div className={`text-3xl font-bold mb-2 ${getScoreColor(currentRapport.demande.score_fiabilite)}`}>
-                      {currentRapport.demande.score_fiabilite || 'N/A'}/100
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      Score calculé automatiquement
-                    </div>
-                  </div>
-                </GlassCard>
-              </div>
-
-              {/* Détails du score de fiabilité */}
-              {currentRapport.score_fiabilite_details && (
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-indigo-700">
-                    <Target size={16} />
-                    Détails du Score de Fiabilité
-                  </h4>
-                  <div className="bg-indigo-50 p-4 rounded-lg">
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {JSON.stringify(currentRapport.score_fiabilite_details, null, 2)}
-                    </pre>
-                  </div>
-                </GlassCard>
-              )}
-
-              {/* Conditions de remboursement */}
-              {currentRapport.conditions_remboursement && (
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-green-700">
-                    <Calendar size={16} />
-                    Conditions de Remboursement Proposées
-                  </h4>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {JSON.stringify(currentRapport.conditions_remboursement, null, 2)}
-                    </pre>
-                  </div>
-                </GlassCard>
-              )}
-
-              {/* Recommandations */}
-              {currentRapport.recommandations && currentRapport.recommandations.length > 0 && (
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-orange-700">
-                    <Star size={16} />
-                    Recommandations
-                  </h4>
-                  <div className="space-y-3">
-                    {currentRapport.recommandations.map((rec, index) => (
-                      <div key={index} className="bg-orange-50 p-3 rounded-lg border-l-4 border-orange-400">
-                        <div className="flex items-start gap-2">
-                          <Info size={16} className="text-orange-600 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm">
-                            <pre className="whitespace-pre-wrap text-gray-700">
-                              {typeof rec === 'string' ? rec : JSON.stringify(rec, null, 2)}
-                            </pre>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </GlassCard>
-              )}
-
-              {/* Historique du workflow */}
-              {currentRapport.historique_workflow && currentRapport.historique_workflow.length > 0 && (
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-700">
-                    <History size={16} />
-                    Historique du Traitement
-                  </h4>
-                  <div className="space-y-3">
-                    {currentRapport.historique_workflow.map((step, index) => (
-                      <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                            {typeof step === 'string' ? step : JSON.stringify(step, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </GlassCard>
-              )}
-
-              {/* Documents analysés */}
-              {currentRapport.documents_analyses && (
-                <GlassCard className="p-4">
-                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-teal-700">
-                    <FileText size={16} />
-                    Documents Analysés
-                  </h4>
-                  <div className="bg-teal-50 p-4 rounded-lg">
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {JSON.stringify(currentRapport.documents_analyses, null, 2)}
-                    </pre>
-                  </div>
-                </GlassCard>
-              )}
-
-              {/* Actions depuis le rapport */}
-              <div className="border-t pt-4">
-                <div className="flex gap-3 justify-end">
-                  <GlassButton
-                    variant="outline"
-                    onClick={() => {
-                      setShowRapportModal(false);
-                      setShowDetails(true);
-                    }}
-                  >
-                    <Eye className="mr-2" size={16} />
-                    Voir Détails Complets
-                  </GlassButton>
-                  
-                  <GlassButton
-                    onClick={() => {
-                      setShowRapportModal(false);
-                      setDecisionType('accorder');
-                      setShowDecisionModal(true);
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <CheckCircle className="mr-2" size={16} />
-                    Accorder ce Prêt
-                  </GlassButton>
-                  
-                  <GlassButton
-                    onClick={() => {
-                      setShowRapportModal(false);
-                      setDecisionType('rejeter');
-                      setShowDecisionModal(true);
-                    }}
-                    className="border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
-                  >
-                    <XCircle className="mr-2" size={16} />
-                    Rejeter ce Prêt
-                  </GlassButton>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-12 text-center">
-              <AlertTriangle className="mx-auto mb-4 text-red-500" size={48} />
-              <p className="text-gray-600">Erreur lors du chargement du rapport</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   if (loading && applications.length === 0) {
     return (
@@ -425,7 +224,7 @@ const AdminLoansValidation = () => {
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
+
         {/* En-tête */}
         <div className="flex items-center justify-between">
           <div>
@@ -442,21 +241,21 @@ const AdminLoansValidation = () => {
             </div>
             <div className="text-sm text-gray-600">En attente validation</div>
           </GlassCard>
-          
+
           <GlassCard className="p-4 text-center border-l-4 border-l-green-500">
             <div className="text-2xl font-bold text-green-600 mb-1">
               {applications.filter(app => app.type_pret === 'professionnel').length}
             </div>
             <div className="text-sm text-gray-600">Prêts professionnels</div>
           </GlassCard>
-          
+
           <GlassCard className="p-4 text-center border-l-4 border-l-purple-500">
             <div className="text-2xl font-bold text-purple-600 mb-1">
               {applications.filter(app => app.type_pret === 'consommation').length}
             </div>
             <div className="text-sm text-gray-600">Prêts consommation</div>
           </GlassCard>
-          
+
           <GlassCard className="p-4 text-center border-l-4 border-l-emerald-500">
             <div className="text-2xl font-bold text-emerald-600 mb-1">
               {(applications.reduce((sum, app) => sum + parseFloat(app.montant_souhaite), 0) / 1000000).toFixed(1)}M
@@ -532,7 +331,7 @@ const AdminLoansValidation = () => {
           {filteredApplications.map((application) => (
             <GlassCard key={application.id} className="p-6" hover={false}>
               <div className="grid lg:grid-cols-4 gap-6">
-                
+
                 {/* Informations demandeur */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -544,7 +343,7 @@ const AdminLoansValidation = () => {
                       {getStatusBadge(application.statut)}
                     </div>
                   </div>
-                  
+
                   <div className="space-y-1 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Phone size={12} />
@@ -571,7 +370,7 @@ const AdminLoansValidation = () => {
                     <DollarSign size={16} className="text-emerald-600" />
                     Demande de prêt
                   </h4>
-                  
+
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Montant:</span>
@@ -601,7 +400,7 @@ const AdminLoansValidation = () => {
                     <TrendingUp size={16} className="text-emerald-600" />
                     Situation financière
                   </h4>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Revenus:</span>
@@ -632,14 +431,13 @@ const AdminLoansValidation = () => {
 
                   </div>
                   <GlassButton
-                    onClick={() => {
-                      setShowRapportModal(true);
-                    }}
+                    onClick={() => handleViewRapport(application)}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Eye className="mr-2" size={16} />
                     Voir rapport
                   </GlassButton>
+
                 </div>
 
                 {/* Actions et superviseur */}
@@ -648,13 +446,13 @@ const AdminLoansValidation = () => {
                     <div className="text-gray-600 mb-1">Superviseur:</div>
                     <div className="font-medium">{application.superviseur_examinateur || 'Non assigné'}</div>
                     <div className="text-xs text-gray-500">
-                      Transféré le {application.date_transfert_admin ? 
+                      Transféré le {application.date_transfert_admin ?
                         format(new Date(application.date_transfert_admin), 'dd/MM/yyyy à HH:mm', { locale: fr })
-                      : 'N/A'
+                        : 'N/A'
                       }
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col gap-2">
                     <GlassButton
                       size="sm"
@@ -667,34 +465,45 @@ const AdminLoansValidation = () => {
                       <Eye className="mr-2" size={14} />
                       Voir détails
                     </GlassButton>
-                    
-                    <div className="flex gap-2">
+                    {application.statut != 'accorde' && (
+                      <div className="flex gap-2">
+                        <GlassButton
+                          size="sm"
+                          onClick={() => {
+                            setSelectedLoan(application);
+                            setDecisionType('valider');
+                            setShowDecisionModal(true);
+                          }}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="mr-1" size={14} />
+                          Accorder
+                        </GlassButton>
+
+                        <GlassButton
+                          size="sm"
+                          onClick={() => {
+                            setSelectedLoan(application);
+                            setDecisionType('rejeter');
+                            setShowDecisionModal(true);
+                          }}
+                          className="flex-1 border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
+                        >
+                          <XCircle className="mr-1" size={14} />
+                          Rejeter
+                        </GlassButton>
+                      </div>
+                    )}
+                    {application.statut === 'accorde' && (
                       <GlassButton
                         size="sm"
-                        onClick={() => {
-                          setSelectedLoan(application);
-                          setDecisionType('accorder');
-                          setShowDecisionModal(true);
-                        }}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={handleDecaissement}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        <CheckCircle className="mr-1" size={14} />
-                        Accorder
+                        <DollarSign className="mr-1" size={14} />
+                        Décaisser
                       </GlassButton>
-                      
-                      <GlassButton
-                        size="sm"
-                        onClick={() => {
-                          setSelectedLoan(application);
-                          setDecisionType('rejeter');
-                          setShowDecisionModal(true);
-                        }}
-                        className="flex-1 border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
-                      >
-                        <XCircle className="mr-1" size={14} />
-                        Rejeter
-                      </GlassButton>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -751,7 +560,7 @@ const AdminLoansValidation = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Informations professionnelles */}
                   <div>
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
@@ -762,7 +571,7 @@ const AdminLoansValidation = () => {
                       <div><strong>Profession:</strong> {selectedLoan.situation_professionnelle}</div>
                       <div><strong>Revenus mensuels:</strong> {formatCurrency(selectedLoan.revenu_mensuel)}</div>
                       <div><strong>Charges mensuelles:</strong> {formatCurrency(selectedLoan.charges_mensuelles)}</div>
-                      <div><strong>Ratio endettement:</strong> 
+                      <div><strong>Ratio endettement:</strong>
                         <span className={`ml-2 font-semibold ${parseFloat(selectedLoan.ratio_endettement) > 40 ? 'text-red-600' : 'text-green-600'}`}>
                           {selectedLoan.ratio_endettement}%
                         </span>
@@ -787,7 +596,7 @@ const AdminLoansValidation = () => {
                       <div><strong>Type de garantie:</strong> {selectedLoan.type_garantie}</div>
                       <div><strong>Détails garantie:</strong> {selectedLoan.details_garantie}</div>
                       {selectedLoan.score_fiabilite && (
-                        <div><strong>Score de fiabilité:</strong> 
+                        <div><strong>Score de fiabilité:</strong>
                           <span className={`ml-2 font-semibold ${getScoreColor(selectedLoan.score_fiabilite)}`}>
                             {selectedLoan.score_fiabilite}/100
                           </span>
@@ -796,7 +605,7 @@ const AdminLoansValidation = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Commentaires du superviseur */}
                 {selectedLoan.commentaires_superviseur && (
                   <div className="mt-6">
@@ -822,32 +631,34 @@ const AdminLoansValidation = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {/* Actions dans le modal */}
-                <div className="mt-6 pt-4 border-t flex gap-3">
-                  <GlassButton
-                    onClick={() => {
-                      setDecisionType('accorder');
-                      setShowDecisionModal(true);
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <CheckCircle className="mr-2" size={16} />
-                    Accorder ce prêt
-                  </GlassButton>
-                  
-                  <GlassButton
-                    variant="outline"
-                    onClick={() => {
-                      setDecisionType('rejeter');
-                      setShowDecisionModal(true);
-                    }}
-                    className="border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
-                  >
-                    <XCircle className="mr-2" size={16} />
-                    Rejeter ce prêt
-                  </GlassButton>
-                </div>
+                {selectedLoan.statut != 'accorde' && (
+                  <div className="mt-6 pt-4 border-t flex gap-3">
+                    <GlassButton
+                      onClick={() => {
+                        setDecisionType('valider');
+                        setShowDecisionModal(true);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle className="mr-2" size={16} />
+                      Accorder ce prêt
+                    </GlassButton>
+
+                    <GlassButton
+                      variant="outline"
+                      onClick={() => {
+                        setDecisionType('rejeter');
+                        setShowDecisionModal(true);
+                      }}
+                      className="border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
+                    >
+                      <XCircle className="mr-2" size={16} />
+                      Rejeter ce prêt
+                    </GlassButton>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -859,9 +670,9 @@ const AdminLoansValidation = () => {
             <div className="bg-white rounded-lg max-w-md w-full">
               <div className="p-6">
                 <h3 className="text-lg font-semibold mb-4">
-                  {decisionType === 'accorder' ? 'Accorder le prêt' : 'Rejeter le prêt'}
+                  {decisionType === 'valider' ? 'Accorder le prêt' : 'Rejeter le prêt'}
                 </h3>
-                
+
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-2">
                     Demande: <strong>{selectedLoan.id}</strong>
@@ -870,53 +681,29 @@ const AdminLoansValidation = () => {
                     Demandeur: <strong>{selectedLoan.prenom} {selectedLoan.nom}</strong>
                   </p>
                 </div>
-                <Input
-                  type="number"
-                  // value={montantAccorde}
-                  // onChange={(e) => setMontantAccorde(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Montant accordé"
-                  required
-                />
-
-                {decisionType === 'rejeter' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Raison du rejet *
-                    </label>
-                    <textarea
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      rows={3}
-                      placeholder="Expliquez la raison du rejet..."
-                      required
-                    />
-                  </div>
-                )}
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Commentaires additionnels
+                    Commentaires additionnels *
                   </label>
                   <textarea
                     value={decisionComment}
                     onChange={(e) => setDecisionComment(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     rows={3}
-                    placeholder="Ajoutez des commentaires (optionnel)..."
+                    placeholder="Ajoutez des commentaires..."
+                    required
                   />
                 </div>
 
                 <div className="flex gap-3">
                   <GlassButton
                     onClick={handleAdminDecision}
-                    disabled={decisionType === 'rejeter' && !rejectReason.trim()}
-                    className={`flex-1 ${
-                      decisionType === 'accorder' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-                    }`}
+                    disabled={!decisionComment.trim()}
+                    className={`flex-1 ${decisionType === 'valider' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                      }`}
                   >
-                    {decisionType === 'accorder' ? 'Accorder ce prêt' : 'Rejeter ce prêt'}
+                    {decisionType === 'valider' ? 'Accorder ce prêt' : 'Rejeter ce prêt'}
                   </GlassButton>
                 </div>
               </div>
@@ -924,7 +711,16 @@ const AdminLoansValidation = () => {
           </div>
         )}
       </div>
+      <RapportModal
+        show={showRapportModal}
+        onClose={() => {
+          setShowRapportModal(false);
+          setCurrentRapport(null);
+        }}
+        rapport={currentRapport}
+      />
     </div>
+
   );
 };
 export default AdminLoansValidation;

@@ -49,7 +49,7 @@ export interface ValidationData {
 }
 
 export interface InitierVirementData {
-  telephone: string;
+  numero_telephone: string;
 }
 
 export interface ValidationRetraitResponse {

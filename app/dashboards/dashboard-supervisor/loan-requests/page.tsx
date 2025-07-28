@@ -237,10 +237,6 @@ useEffect(() => {
                               {request.situation_professionnelle}
                             </div>
                             <div className="flex items-center">
-                              <FileText className="mr-1" size={14} />
-                              ID: {request.id}
-                            </div>
-                            <div className="flex items-center">
                               <Calendar className="mr-1" size={14} />
                               {format(new Date(request.date_soumission), 'dd MMM yyyy', { locale: fr })}
                             </div>

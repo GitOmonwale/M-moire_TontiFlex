@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LoanApplication, LoanApplicationFilters, PaginatedLoanApplicationList, CreateLoanApplicationData, UpdateLoanApplicationData, AdminDecisionData, SupervisorProcessData, LoanApplicationResponse, RapportDemande } from '../types/loans-applications';
 import { CompleterRapportData } from '../types/loans-applications';
+import { toast } from 'sonner';
 
 interface useLoansApplicationsResults {
   applications: LoanApplication[];
@@ -127,25 +128,35 @@ export function useLoansApplications(): useLoansApplicationsResults {
         body: formData,
       });
 
+
       if (!response.ok) {
         let errorMessage = 'Erreur lors de la création de la demande';
+        
         try {
           const errorData = await response.json();
+      
           if (errorData.detail) {
             errorMessage = errorData.detail;
+      
           } else if (typeof errorData === 'object') {
             const validationErrors = Object.entries(errorData)
-              .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+              .map(([field, errors]) => {
+                const formattedErrors = Array.isArray(errors) ? errors.join(', ') : errors;
+                return `${field}: ${formattedErrors}`;
+              })
               .join('\n');
+      
             if (validationErrors) {
               errorMessage = `Erreurs de validation :\n${validationErrors}`;
             }
           }
         } catch (e) {
-          console.error('Erreur lors de la lecture de la réponse d\'erreur:', e);
+          console.error("Erreur lors de l'analyse de la réponse d'erreur :", e);
         }
+        toast.error(errorMessage);
         throw new Error(errorMessage);
       }
+      
 
       const newApplication = await response.json();
       setApplications(prev => [newApplication, ...prev]);
@@ -296,6 +307,7 @@ export function useLoansApplications(): useLoansApplicationsResults {
               .join('\n');
             if (validationErrors) {
               errorMessage = `Erreurs de validation :\n${validationErrors}`;
+              toast.error(errorMessage);
             }
           }
         } catch (e) {
@@ -309,12 +321,12 @@ export function useLoansApplications(): useLoansApplicationsResults {
             errorMessage = 'Demande introuvable';
           }
         }
-        
+        toast.error(errorMessage);
         throw new Error(errorMessage);
       }
       
       const result = await response.json();
-      
+      toast.success('Demande traitée avec succès');
       // Mettre à jour la demande dans la liste
       if (result.demande) {
         setApplications(prev => 

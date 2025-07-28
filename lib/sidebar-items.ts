@@ -173,14 +173,14 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
       description: 'Gérer vos comptes courants'
     },
     {
-      id: 3,
+      id: 4,
       label: 'Prêts',
       icon: PiggyBank,
       link: '/dashboards/dashboard-client/loans',
       description: 'Gérer vos prêts'
     },
     {
-      id: 4,
+      id: 5,
       label: 'Historiques',
       icon: FileText,
       link: '/dashboards/dashboard-client/operations-history',
@@ -260,14 +260,14 @@ export const sidebarItemsByRole: Record<RoleKey, SidebarItem[]> = {
     //   link: '/dashboards/dashboard-supervisor/reliability-scores',
     // },
     {
-      id: 5,
+      id: 4,
       label: 'Rapports & Analytics',
       icon: BarChart3,
       link: '/dashboards/dashboard-supervisor/reports',
       description: 'Gérer les rapports & analytics' 
     },
     {
-      id: 6,
+      id: 5,
       label: 'Historique décisions',
       icon: ClipboardList,
       link: '/dashboards/dashboard-supervisor/decision-history',

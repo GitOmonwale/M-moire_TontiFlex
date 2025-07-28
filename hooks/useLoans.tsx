@@ -5,7 +5,6 @@ import type {
   Loan,
   CreateLoanData,
   UpdateLoanData,
-  DecaissementData,
   RepaymentData,
   CalendrierRemboursement,
   MyLoan,
@@ -66,7 +65,7 @@ interface useLoansAPIResults {
 
   // Specialized operations
   fetchCalendrierRemboursement: (id: string) => Promise<CalendrierRemboursement>;
-  decaissement: (id: string, decaissementData: DecaissementData) => Promise<Loan>;
+  decaissement: (id: string) => Promise<Loan>;
   
   // 🆕 Nouvelles méthodes pour KKiaPay
   createRepaymentForPayment: (id: string, repaymentData: RepaymentData) => Promise<RepaymentResponse>;
@@ -317,14 +316,13 @@ export function useLoans(): useLoansAPIResults {
   };
 
   // Marquer un prêt comme décaissé
-  const decaissement = async (id: string, decaissementData: DecaissementData): Promise<Loan> => {
+  const decaissement = async (id: string): Promise<Loan> => {
     setLoading(true);
     setError(null);
     try {
       const response = await fetch(`${baseUrl}/loans/${id}/decaissement/`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(decaissementData),
       });
 
       if (!response.ok) {

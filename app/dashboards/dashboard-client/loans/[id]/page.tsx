@@ -137,7 +137,7 @@ const LoanDetail = () => {
       toast.success(
         `🎉 Remboursement réussi !`,
         {
-          description: `Échéance du ${new Date(selectedInstallment?.date_echeance).toLocaleDateString('fr-FR')} • ${formatCurrency(selectedInstallment?.montant_total_du || '0')}`,
+          description: `Échéance du ${new Date(selectedInstallment?.date_echeance).toLocaleDateString('fr-FR')}}`,
           duration: 8000,
           action: {
             label: "Voir calendrier",
@@ -618,18 +618,14 @@ const LoanDetail = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          {echeanceStatus === "en_cours" || echeanceStatus === "en_retard" || echeanceStatus === "paye_partiel" ? (
                             <Button
                               size="sm"
                               onClick={() => handlePayInstallment(echeance)}
                               className="flex items-center gap-1"
                             >
                               <CreditCard size={14} />
-                              Payer avec KKiaPay
+                              Payer
                             </Button>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -662,6 +658,7 @@ const LoanDetail = () => {
 
         {/* Modal du formulaire de paiement avec KKiaPay */}
         <LoanPaymentForm
+          id={id as string}
           isOpen={isPaymentFormOpen}
           onClose={handleClosePaymentForm}
           selectedInstallment={selectedInstallment}

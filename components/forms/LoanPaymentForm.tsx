@@ -17,6 +17,7 @@ import { Loader2, CreditCard, AlertCircle, DollarSign, Calendar, X } from 'lucid
 import { toast } from 'sonner';
 
 interface LoanPaymentFormProps {
+  id: string;
   isOpen: boolean;
   onClose: () => void;
   selectedInstallment: any;
@@ -33,6 +34,7 @@ interface PaymentFormData {
 }
 
 const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
+  id,
   isOpen,
   onClose,
   selectedInstallment,
@@ -79,7 +81,6 @@ const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
             
             // 🎉 TOAST DE SUCCÈS PERSONNALISÉ
             toast.success('🎉 Remboursement réussi !', {
-              description: `Échéance payée • ${formatCurrency(selectedInstallment?.montant_total_du || '0')}`,
               duration: 6000
             });
             
@@ -188,8 +189,11 @@ const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
         amount: montantTotal,
         phone: paymentForm.numero_telephone,
         description: `TontiFlex - Remboursement échéance ${selectedInstallment?.date_echeance} - ${formatCurrency(montantTotal)}`,
-        key: process.env.NEXT_PUBLIC_KKIAPAY_API_KEY || '',
-        sandbox: process.env.NEXT_PUBLIC_KKIAPAY_SANDBOX === 'true'
+        key:'d1297c10527a11f0a266e50dce82524c',
+        sandbox: true,
+        callback: `http://localhost:3000/dashboards/dashboard-client/loans/${id}`,
+        position: 'center' as const,
+        theme: '#2196f3'
       };
 
       console.log('💳 Ouverture du widget KKiaPay pour remboursement...', kkiapayConfig);
@@ -283,22 +287,22 @@ const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
         {step === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="numero_telephone">Numéro de téléphone *</Label>
+              <Label htmlFor="numero_telephone mb-2">Numéro de téléphone *</Label>
               <Input
                 id="numero_telephone"
                 type="text"
                 value={paymentForm.numero_telephone}
                 onChange={(e) => handleFormChange('numero_telephone', e.target.value)}
-                placeholder="+22970123456"
+                placeholder="97000000"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Pour test: utilisez +22997000000
+                Pour test: utilisez 97000000
               </p>
             </div>
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description mb-2">Description</Label>
               <Textarea
                 id="description"
                 value={paymentForm.description}
@@ -362,7 +366,7 @@ const LoanPaymentForm: React.FC<LoanPaymentFormProps> = ({
                 ) : (
                   <>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Payer avec KKiaPay
+                    Payer
                   </>
                 )}
               </Button>

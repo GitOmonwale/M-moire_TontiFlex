@@ -1,7 +1,7 @@
 // Types TypeScript basés sur l'API
 export type TypeTransaction = 'depot' | 'retrait';
 
-export type StatutTransaction = 'en_cours' | 'confirmee' | 'echouee' | 'annulee';
+export type StatutTransaction = 'pending' | 'approved' | 'rejected' | 'confirmee' | 'en_cours';
 
 export interface SavingsTransaction {
   id: string; // UUID, readOnly
@@ -49,9 +49,8 @@ export interface UpdateSavingsTransactionData {
 }
 
 export interface ValidateWithdrawalData {
-  decision: 'approve' | 'reject';
+  decision: 'approved' | 'rejected';
   commentaires?: string;
-  raison_rejet?: string;
 }
 
 export interface InitiateTransferData {

@@ -32,7 +32,16 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+  
+    // Validation du domaine de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.(com|bj)$/i;
+    if (!emailRegex.test(formData.email)) {
+      setError("Seuls les emails se terminant par .com ou .bj sont autorisés.");
+      toast.error("Adresse email invalide. Utilisez un domaine .com ou .bj");
+      setLoading(false);
+      return;
+    }
+  
     try {
       const user = await login(formData.email, formData.password);
       if (user) {

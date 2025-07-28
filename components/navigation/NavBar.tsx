@@ -4,7 +4,7 @@ import { Home, User, LogIn } from "lucide-react";
 
 export const NavBar = () => {
   return (
-    <nav className="sticky top-0 z-50 bg-primary/10 backdrop-blur-sm border border-primary/20 shadow-md hover:bg-primary/20 transition-all duration-300 mx-4 mt-4 rounded-2xl">
+    <nav className="sticky top-0 z-50 bg-primary/10 backdrop-blur-sm border border-primary/20 shadow-md transition-all duration-300 mx-4 mt-4 rounded-2xl">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo et titre */}

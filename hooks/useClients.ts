@@ -403,7 +403,7 @@ export function useClientsAPI(): useClientsAPIResults {
   const fetchMyTransactionHistory = async (): Promise<KKiaPayTransaction[]> => {
     try {
       setLoading(true);
-      const response = await fetch(`${baseUrl}/accounts/clients/my-histories/`, {
+      const response = await fetch(`${baseUrl}/clients/my-histories/`, {
         method: 'GET',
         headers: getAuthHeaders(),
       });

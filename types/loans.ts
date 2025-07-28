@@ -74,14 +74,6 @@ export interface CalendrierRemboursement {
   statistiques: Record<string, any>;
 }
 
-export interface DecaissementData {
-  date_decaissement: string;
-  mode_decaissement: string;
-  commentaire?: string;
-  numero_recu?: string;
-  agent_decaisseur?: string;
-}
-
 export interface RepaymentData {
   numero_telephone: string;
   description?: string;

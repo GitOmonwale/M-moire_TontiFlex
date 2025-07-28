@@ -1,3 +1,5 @@
+import { Loan } from "./loans";
+
 export interface LoanApplication {
     id: string;
     client: string;
@@ -115,9 +117,8 @@ export interface LoanApplication {
   }
   
   export interface AdminDecisionData {
-    decision: 'accorder' | 'rejeter';
+    action: 'valider' | 'rejeter';
     commentaires?: string;
-    raison_rejet?: string;
     montant_accorde?: string;
   }
   
@@ -132,23 +133,67 @@ export interface LoanApplication {
     commentaire?: string;
   }
   export interface LoanApplicationResponse {
-    success: boolean;
     message: string;
     demande: LoanApplication;
-    loan?: any;
-    conditions?: any;
-    next_step?: string;
+    pret: Loan;
   }
   
   export interface RapportDemande {
-    demande: LoanApplication;
-    score_fiabilite_details: any;
-    conditions_remboursement?: any;
-    historique_workflow: any[];
-    recommandations: any[];
-    documents_analyses: any;
+    demande_id: string;
+  
+    client: {
+      nom: string;
+      age: number | null;
+      situation_familiale: string;
+      profession: string;
+    };
+  
+    pret_demande: {
+      montant: number;
+      duree: number;
+      type: string;
+      objet: string;
+    };
+  
+    situation_financiere: {
+      revenu_mensuel: number;
+      charges_mensuelles: number;
+      ratio_endettement: number;
+    };
+  
+    score_fiabilite: {
+      score: number;
+      evaluation: string;
+      details: {
+        score_base: number;
+        bonus_anciennete_epargne: number;
+        bonus_participation_tontines: number;
+        bonus_regularite_cotisations: number;
+        bonus_historique_prets: number;
+        malus_retards: number;
+      };
+      recommandations: string[];
+    };
+  
+    analyse_capacite: {
+      revenu_mensuel: number;
+      charges_actuelles: number;
+      reste_a_vivre_actuel: number;
+      mensualite_pret: number;
+      nouveau_ratio_endettement: number;
+      reste_apres_pret: number;
+      ratio_max_recommande: number;
+      reste_minimum_recommande: number;
+      analyse_favorable: boolean;
+      niveau_risque: string;
+      commentaires: string[];
+    };
+  
+    recommandations: string[]; // (peut être vide)
+    niveau_risque_global: string;
+    decision_recommandee: string;
   }
-
+  
   
   // 🆕 Interface pour compléter le rapport superviseur
   export interface CompleterRapportData {

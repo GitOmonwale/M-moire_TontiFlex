@@ -80,11 +80,11 @@ const AgentSFDEpargnePage = () => {
   };
 
   // Séparer d'abord les demandes en attente des comptes actifs
-  const demandesEnAttenteBase = savingsAccounts.filter(compte => 
+  const demandesEnAttenteBase = savingsAccounts.filter(compte =>
     ['en_cours_creation', 'validee_agent', 'paiement_effectue'].includes(compte.statut)
   );
-  
-  const comptesActifsBase = savingsAccounts.filter(compte => 
+
+  const comptesActifsBase = savingsAccounts.filter(compte =>
     compte.statut === 'actif'
   );
 
@@ -164,7 +164,7 @@ const AgentSFDEpargnePage = () => {
       toast.error("Nom et téléphone obligatoires");
       return;
     }
-    
+
     toast.success("Compte épargne créé !");
     setShowCreateModal(false);
     setNewCompte({ clientName: '', telephone: '', profession: '', adresse: '' });
@@ -184,16 +184,16 @@ const AgentSFDEpargnePage = () => {
 
   const handleTelechargerReleve = (compte: SavingsAccount) => {
     toast.success(`Téléchargement du relevé du compte ${compte.accountNumber}`);
-    
+
     // Générer un CSV à partir de l'historique
     let csv = 'Date,Type,Montant,Statut,Commentaire\n';
-    
-    if (compte.transactions_recentes) {
-      compte.transactions_recentes.forEach(transaction => {
+
+    if (compte.transactions) {
+      compte.transactions.forEach(transaction => {
         csv += `${transaction.date_transaction},${transaction.type_display},${transaction.montant},${transaction.statut_display},${transaction.commentaires || ''}\n`;
       });
     }
-    
+
     // Créer un blob et lancer le téléchargement
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -258,8 +258,8 @@ const AgentSFDEpargnePage = () => {
     creationsMois: savingsAccounts.filter(compte => {
       const dateCreation = new Date(compte.dateCreation);
       const maintenant = new Date();
-      return dateCreation.getMonth() === maintenant.getMonth() && 
-             dateCreation.getFullYear() === maintenant.getFullYear();
+      return dateCreation.getMonth() === maintenant.getMonth() &&
+        dateCreation.getFullYear() === maintenant.getFullYear();
     }).length
   };
 
@@ -356,8 +356,8 @@ const AgentSFDEpargnePage = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <Input
-                placeholder={activeTab === 'demandes' 
-                  ? "Rechercher par nom, téléphone, numéro de compte..." 
+                placeholder={activeTab === 'demandes'
+                  ? "Rechercher par nom, téléphone, numéro de compte..."
                   : "Rechercher un compte actif..."
                 }
                 value={searchTerm}
@@ -414,14 +414,14 @@ const AgentSFDEpargnePage = () => {
                       <td colSpan={6} className="text-center text-gray-400 py-6">
                         <UserCheck className="mx-auto mb-2 text-gray-300" size={36} />
                         <div>
-                          {demandesEnAttenteBase.length === 0 
-                            ? "Aucune demande de compte épargne" 
+                          {demandesEnAttenteBase.length === 0
+                            ? "Aucune demande de compte épargne"
                             : "Aucune demande trouvée"
                           }
                         </div>
                         <div className="text-xs text-gray-500">
-                          {demandesEnAttenteBase.length === 0 
-                            ? "Les nouvelles demandes apparaîtront ici" 
+                          {demandesEnAttenteBase.length === 0
+                            ? "Les nouvelles demandes apparaîtront ici"
                             : "Essayez de modifier vos filtres de recherche"
                           }
                         </div>
@@ -446,9 +446,9 @@ const AgentSFDEpargnePage = () => {
                         </td>
                         {/* Statut */}
                         <td className="px-2 py-2 text-center align-middle">
-                        <span className={cn("px-3 text-nowrap py-1 rounded-full text-xs font-medium border", getStatusBadge(demande.statut as SavingsAccountStatus))}>
-  {getStatusLabel(demande.statut as SavingsAccountStatus)}
-</span>
+                          <span className={cn("px-3 text-nowrap py-1 rounded-full text-xs font-medium border", getStatusBadge(demande.statut as SavingsAccountStatus))}>
+                            {getStatusLabel(demande.statut as SavingsAccountStatus)}
+                          </span>
                         </td>
                         {/* Actions */}
                         <td className="px-2 py-2 text-center align-middle">
@@ -501,10 +501,10 @@ const AgentSFDEpargnePage = () => {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-2 py-2 text-left">Client</th>
-                  <th className="px-2 py-2 text-left">N° Compte</th>
+                  <th className="px-2 py-2 text-left">Nombres de transactions</th>
                   <th className="px-2 py-2 text-left">SFD</th>
                   <th className="px-2 py-2 text-left">Solde</th>
-                  <th className="px-2 py-2 text-left">Date ouverture</th>
+                  <th className="px-2 py-2 text-left">Dernière transaction</th>
                   <th className="px-2 py-2 text-center">Actions</th>
                 </tr>
               </thead>
@@ -525,9 +525,9 @@ const AgentSFDEpargnePage = () => {
                       <td className="px-2 py-2 font-semibold text-gray-900 align-middle">
                         {compte.client_nom || 'Non renseigné'}
                       </td>
-                      {/* N° Compte */}
+                      {/* Nombres de transactions */}
                       <td className="px-2 py-2 text-gray-700 align-middle">
-                        {compte.accountNumber}
+                        {compte.transactions?.length || 0}
                       </td>
                       {/* SFD */}
                       <td className="px-2 py-2 text-gray-700 align-middle">
@@ -539,21 +539,21 @@ const AgentSFDEpargnePage = () => {
                       </td>
                       {/* Date ouverture */}
                       <td className="px-2 py-2 text-gray-700 align-middle">
-                        {compte.dateCreation ? format(new Date(compte.dateCreation), 'dd/MM/yyyy', { locale: fr }) : 'Non renseigné'}
+                        {compte.derniere_transaction ? format(new Date(compte.derniere_transaction), 'dd/MM/yyyy', { locale: fr }) : 'Aucune transaction'}
                       </td>
                       {/* Actions */}
                       <td className="px-2 py-2 text-center align-middle">
                         <div className="flex items-center gap-3 justify-center">
-                          <GlassButton 
-                            size="sm" 
-                            variant="outline" 
+                          <GlassButton
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleViewHistorique(compte)}
                           >
                             <Eye size={16} className="mr-1" />
                           </GlassButton>
-                          <GlassButton 
-                            size="sm" 
-                            variant="outline" 
+                          <GlassButton
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleTelechargerReleve(compte)}
                           >
                             <Download size={16} className="mr-1" />
@@ -590,7 +590,7 @@ const AgentSFDEpargnePage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-700 mb-1">ID Adherent</label>
-                    <p className="text-gray-900">{selectedDemande.idAdherents || 'Non renseigné'}</p>
+                    <p className="text-gray-900">{selectedDemande.id || 'Non renseigné'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-green-700 mb-1">N° Compte</label>
@@ -600,18 +600,6 @@ const AgentSFDEpargnePage = () => {
                     <label className="block text-sm font-medium text-green-700 mb-1">SFD</label>
                     <p className="text-gray-900">{selectedDemande.sfdName || 'Non renseigné'}</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-700 mb-1">Téléphone paiement</label>
-                    <p className="text-gray-900">{selectedDemande.numero_telephone_paiement || 'Non renseigné'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-700 mb-1">Frais de création</label>
-                    <p className="text-gray-900">{selectedDemande.frais_creation?.toLocaleString() || '0'} FCFA</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-green-700 mb-1">Commentaires agent</label>
-                    <p className="text-gray-900">{selectedDemande.commentaires_agent || 'Aucun commentaire'}</p>
-                  </div>
                 </div>
 
                 {/* Pièces à vérifier */}
@@ -620,31 +608,15 @@ const AgentSFDEpargnePage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col items-center bg-gray-50 rounded-lg p-3 border">
                       <span className="text-xs text-green-700 mb-1">Pièce d'identité</span>
-                      <img
-                        src={selectedDemande.piece_identite}
-                        alt="Pièce d'identité"
-                        className="w-20 h-14 object-cover rounded shadow mb-2 border"
-                        onClick={() => handleViewImage(selectedDemande.piece_identite, 'Pièce d\'identité')}
-                        style={{ cursor: 'pointer' }}
-                        onError={e => { (e.currentTarget as HTMLImageElement).src = '/placeholder-document.png'; }}
-                      />
-                      <GlassButton size="sm" variant="outline" onClick={() => handleViewImage(selectedDemande.piece_identite, 'Pièce d\'identité')}>
-                        Voir
-                      </GlassButton>
+                      <div className="flex items-center">
+                        <a href={selectedDemande.piece_identite_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline text-sm">Voir</a>
+                      </div>
                     </div>
                     <div className="flex flex-col items-center bg-gray-50 rounded-lg p-3 border">
                       <span className="text-xs text-gray-500 mb-1">Photo d'identité</span>
-                      <img
-                        src={selectedDemande.photo_identite}
-                        alt="Photo identité"
-                        className="w-20 h-14 object-cover rounded shadow mb-2 border"
-                        onClick={() => handleViewImage(selectedDemande.photo_identite, 'Photo identité')}
-                        style={{ cursor: 'pointer' }}
-                        onError={e => { (e.currentTarget as HTMLImageElement).src = '/placeholder-document.png'; }}
-                      />
-                      <GlassButton size="sm" variant="outline" onClick={() => handleViewImage(selectedDemande.photo_identite, 'Photo identité')}>
-                        Voir
-                      </GlassButton>
+                      <div className="flex items-center">
+                        <a href={selectedDemande.photo_identite_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline text-sm">Voir</a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -804,8 +776,8 @@ const AgentSFDEpargnePage = () => {
                           <td className="px-2 py-2 text-gray-600">{transaction.description || '-'}</td>
                         </tr>
                       ))
-                    ) : selectedCompte.transactions_recentes?.length ? (
-                      selectedCompte.transactions_recentes.map((transaction, idx) => (
+                    ) : selectedCompte.transactions?.length ? (
+                      selectedCompte.transactions.map((transaction, idx) => (
                         <tr key={idx} className="bg-white/80">
                           <td className="px-2 py-2 text-gray-800">
                             {format(new Date(transaction.date_transaction), 'dd/MM/yyyy', { locale: fr })}
@@ -827,11 +799,10 @@ const AgentSFDEpargnePage = () => {
                             })} FCFA
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              transaction.statut === 'valide' ? 'bg-green-100 text-green-800' :
-                              transaction.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.statut === 'valide' ? 'bg-green-100 text-green-800' :
+                                transaction.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                              }`}>
                               {transaction.statut_display}
                             </span>
                           </td>

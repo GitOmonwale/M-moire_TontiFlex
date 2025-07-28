@@ -39,9 +39,10 @@ export interface SavingsAccount {
   id: string;
   client_nom: string;
   agent_nom: string;
+  derniere_transaction: string;
   transactions: TransactionRecente[];
-  piece_identite: string;
-  photo_identite: string;
+  piece_identite_url: string;
+  photo_identite_url: string;
   numero_telephone_paiement: string;
   frais_creation: number | null;
   date_validation_agent: string;

@@ -193,13 +193,13 @@ const WidrawalSavingsForm: React.FC<WidrawalSavingsFormProps> = ({
                     <span className="text-gray-600">Numéro de destination :</span>
                     <span className="font-medium">{retraitData.numero_telephone || 'Non renseigné'}</span>
                   </div>
-                  <div className="flex justify-between border-t pt-2">
+                  {/* <div className="flex justify-between border-t pt-2">
                     <span className="text-gray-600">Nouveau solde :</span>
                     <span className={`font-bold ${(soldeDisponible - montantSaisi) >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                       {(soldeDisponible - montantSaisi).toLocaleString()} FCFA
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}

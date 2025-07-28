@@ -394,7 +394,7 @@ const [processing, setProcessing] = useState(false);
                                                                 size="sm"
                                                             >
                                                                 <CreditCard className="h-3 w-3 mr-1" />
-                                                                Payer avec KKiaPay
+                                                                Payer
                                                             </GlassButton>
                                                         </div>
                                                     ) : (
@@ -528,6 +528,7 @@ const [processing, setProcessing] = useState(false);
                 {isContributionModalOpen && (
                     <ContributionForm
                         isOpen={isContributionModalOpen}
+                        id={participantId}
                         onClose={() => setIsContributionModalOpen(false)}
                         participantDetails={participantDetails}
                         loading={loading}

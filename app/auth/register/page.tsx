@@ -64,10 +64,12 @@ const Register = () => {
         }
 
         // Validation format email
-        if (formData.email && !formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-            newErrors.email = "Format d'email invalide";
+        if (formData.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.(com|bj)$/i;
+            if (!emailRegex.test(formData.email)) {
+                newErrors.email = "Seuls les emails avec un domaine .com ou .bj sont autorisés.";
+            }
         }
-
         // Validation longueur des champs
         if (formData.firstName.length > 50) {
             newErrors.firstName = "Le prénom ne peut pas dépasser 50 caractères";
@@ -391,6 +393,7 @@ const Register = () => {
                                         onChange={(e) => handleChange("acceptTerms", e.target.checked)}
                                         className="w-4 h-4 mt-1 rounded border-primary/20 text-primary focus:ring-primary"
                                         disabled={loading || isLoading}
+                                        required
                                     />
                                     <label
                                         htmlFor="acceptTerms"

@@ -9,6 +9,7 @@ import { useContext } from 'react';
 
 interface ContributionFormProps {
   isOpen: boolean;
+  id: string;
   onClose: () => void;
   participantDetails: any;
   loading: boolean;
@@ -19,6 +20,7 @@ interface ContributionFormProps {
 
 const ContributionForm: React.FC<ContributionFormProps> = ({
   isOpen,
+  id,
   onClose,
   participantDetails,
   loading,
@@ -33,6 +35,10 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
     commentaire: ''
   });
 
+  // États pour la validation
+  const [phoneError, setPhoneError] = useState('');
+  const [misesError, setMisesError] = useState('');
+
   const { user } = useAuth();
   const [cotisationResponse, setCotisationResponse] = useState<any>(null);
   const [step, setStep] = useState<'form' | 'payment' | 'processing'>('form');
@@ -45,6 +51,109 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
     openPayment,
     setupPaymentListeners
   } = useKKiaPay();
+
+  // ✅ Fonction de validation du numéro de téléphone
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Format accepté: exactement 8 chiffres uniquement
+    const phoneRegex = /^[0-9]{8}$/;
+    return phoneRegex.test(phone);
+  };
+console.log("participantDetails.id",id);
+  // ✅ Fonction de validation du nombre de mises
+  const validateNombreMises = (value: number): boolean => {
+    return value >= 1 && value <= 31 && Number.isInteger(value);
+  };
+
+  // ✅ Handler pour le nombre de mises avec validation stricte des décimales
+  const handleNombreMisesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Empêcher complètement les décimales, valeurs négatives et caractères non numériques
+    if (value === '') {
+      setCotisationData(prev => ({
+        ...prev,
+        nombre_mises: 0
+      }));
+      setMisesError('Le nombre de mises doit être au moins 1');
+      return;
+    }
+    
+    // Vérifier si la valeur contient des décimales
+    if (value.includes('.') || value.includes(',')) {
+      setMisesError('Les décimales ne sont pas autorisées. Saisissez un nombre entier.');
+      return;
+    }
+    
+    // Vérifier si c'est un nombre valide et positif
+    const numericValue = parseInt(value, 10);
+    
+    // Si ce n'est pas un nombre valide ou si c'est négatif
+    if (isNaN(numericValue) || numericValue < 0) {
+      setMisesError('Veuillez saisir un nombre entier positif');
+      return;
+    }
+    
+    // Vérifier si la conversion parseInt a changé la valeur (détecte les décimales cachées)
+    if (value !== numericValue.toString() && value !== '0' + numericValue.toString()) {
+      setMisesError('Seuls les nombres entiers sont autorisés');
+      return;
+    }
+    
+    // Mettre à jour la valeur
+    setCotisationData(prev => ({
+      ...prev,
+      nombre_mises: numericValue
+    }));
+
+    // Validation des limites
+    if (numericValue === 0) {
+      setMisesError('Le nombre de mises doit être au moins 1');
+    } else if (numericValue > 31) {
+      setMisesError('Le nombre de mises ne peut pas dépasser 31');
+    } else {
+      setMisesError('');
+    }
+  };
+
+  // ✅ Handler pour le numéro de téléphone avec validation
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Supprimer tous les caractères non numériques
+    value = value.replace(/[^0-9]/g, '');
+    
+    // Limiter à 8 chiffres maximum
+    if (value.length > 8) {
+      value = value.substring(0, 8);
+    }
+    
+    setCotisationData(prev => ({
+      ...prev,
+      numero_telephone: value
+    }));
+
+    // Validation
+    if (value.length === 0) {
+      setPhoneError('');
+    } else if (value.length < 8) {
+      setPhoneError('Le numéro doit contenir exactement 8 chiffres');
+    } else if (!validatePhoneNumber(value)) {
+      setPhoneError('Format invalide. Saisissez exactement 8 chiffres');
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  // ✅ Vérifier si le formulaire est valide
+  const isFormValid = () => {
+    return (
+      cotisationData.nombre_mises >= 1 &&
+      cotisationData.nombre_mises <= 31 &&
+      validatePhoneNumber(cotisationData.numero_telephone) &&
+      !phoneError &&
+      !misesError
+    );
+  };
 
   // ✅ Configurer les listeners de paiement KKiaPay avec simulation webhook
   useEffect(() => {
@@ -142,8 +251,9 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!cotisationData.numero_telephone) {
-      toast.error('Veuillez saisir un numéro de téléphone');
+    // Validation finale avant soumission
+    if (!isFormValid()) {
+      toast.error('Veuillez corriger les erreurs du formulaire');
       return;
     }
 
@@ -167,10 +277,11 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
         amount: montantTotal,
         phone: cotisationData.numero_telephone,
         description: `TontiFlex-${response.transaction_kkiapay.reference}`,
-        callback: 'https://tontiflexapp.onrender.com/api/payments/webhook/',
+        callback: `http://localhost:3000/dashboards/dashboard-client/my-tontines/${id}`,
         position: 'center' as const,
         theme: '#2196f3'
       };
+      
       console.log('💳 Configuration KKiaPay :', kkiapayConfig);
 
       // Configurer les listeners avant d'ouvrir
@@ -209,6 +320,8 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
     });
     setCotisationResponse(null);
     setStep('form');
+    setPhoneError('');
+    setMisesError('');
   };
 
   // Fermer et réinitialiser
@@ -304,13 +417,41 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
                   type="number"
                   min="1"
                   max={31}
-                  value={cotisationData.nombre_mises}
-                  onChange={(e) => setCotisationData(prev => ({
-                    ...prev,
-                    nombre_mises: parseInt(e.target.value) || 1
-                  }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  value={cotisationData.nombre_mises || ''}
+                  onChange={handleNombreMisesChange}
+                  onKeyDown={(e) => {
+                    // Empêcher la saisie de caractères interdits pour les entiers
+                    if (e.key === '-' || e.key === '.' || e.key === ',' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    // Bloquer le collage de contenu non entier
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text');
+                    const cleanedData = pastedData.replace(/[^0-9]/g, '');
+                    
+                    if (cleanedData && !isNaN(Number(cleanedData))) {
+                      const numericValue = parseInt(cleanedData, 10);
+                      if (numericValue >= 1 && numericValue <= 31) {
+                        setCotisationData(prev => ({
+                          ...prev,
+                          nombre_mises: numericValue
+                        }));
+                        setMisesError('');
+                      } else if (numericValue === 0) {
+                        setMisesError('Le nombre de mises doit être au moins 1');
+                      } else if (numericValue > 31) {
+                        setMisesError('Le nombre de mises ne peut pas dépasser 31');
+                      }
+                    }
+                  }}
+                  className={`w-full px-4 py-2 border rounded-lg ${misesError ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="1"
                 />
+                {misesError && (
+                  <p className="text-red-500 text-xs mt-1">{misesError}</p>
+                )}
                 <div className="mt-2 space-y-1 text-sm">
                   <p className="text-gray-600">
                     <strong>Montant calculé :</strong> {montantTotal.toLocaleString()} FCFA
@@ -325,15 +466,42 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
                 <input
                   type="tel"
                   value={cotisationData.numero_telephone}
-                  onChange={(e) => setCotisationData(prev => ({
-                    ...prev,
-                    numero_telephone: e.target.value
-                  }))}
-                  placeholder="+22970123456"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  onChange={handlePhoneChange}
+                  placeholder="97000000"
+                  className={`w-full px-4 py-2 border rounded-lg ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
+                  maxLength={8}
+                  onKeyDown={(e) => {
+                    // Empêcher les caractères non numériques
+                    if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    // Gérer le collage en nettoyant le contenu
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text');
+                    const cleanedData = pastedData.replace(/[^0-9]/g, '').substring(0, 8);
+                    
+                    setCotisationData(prev => ({
+                      ...prev,
+                      numero_telephone: cleanedData
+                    }));
+                    
+                    // Valider immédiatement
+                    if (cleanedData.length === 0) {
+                      setPhoneError('');
+                    } else if (cleanedData.length < 8) {
+                      setPhoneError('Le numéro doit contenir exactement 8 chiffres');
+                    } else {
+                      setPhoneError('');
+                    }
+                  }}
                 />
+                {phoneError && (
+                  <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Pour test: utilisez +22997000000
+                  Format requis: 8 chiffres uniquement (exemple: 97000000)
                 </p>
               </div>
 
@@ -397,7 +565,7 @@ const ContributionForm: React.FC<ContributionFormProps> = ({
                   loading ||
                   kkiapayLoading ||
                   !isSDKLoaded ||
-                  !cotisationData.numero_telephone
+                  !isFormValid()
                 }
                 className="flex-1"
               >
