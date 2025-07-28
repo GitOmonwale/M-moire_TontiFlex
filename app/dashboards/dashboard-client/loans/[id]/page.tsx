@@ -587,7 +587,6 @@ const LoanDetail = () => {
                     <TableHead className="text-right">Capital</TableHead>
                     <TableHead className="text-right">Intérêts</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-center">Statut</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -611,13 +610,7 @@ const LoanDetail = () => {
                         <TableCell className="text-right font-semibold">
                           {formatCurrency(echeance.montant_total_du)}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {getEcheanceStatusIcon(echeanceStatus)}
-                            {getEcheanceStatusBadge(echeanceStatus)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center items-center">
                             <Button
                               size="sm"
                               onClick={() => handlePayInstallment(echeance)}
